@@ -807,7 +807,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool i
 
     objectGrid.render(nvg);
 
-    if (viewport && lasso.isVisible() && !lasso.getBounds().isEmpty()) {
+    if ((viewport || isQuickCanvas) && lasso.isVisible() && !lasso.getBounds().isEmpty()) {
         auto lassoBounds = lasso.getBounds();
         lassoBounds = lassoBounds.withSize(jmax(lasso.getWidth(), 2), jmax(lasso.getHeight(), 2));
         nvgDrawRoundedRect(nvg, lassoBounds.getX(), lassoBounds.getY(), lassoBounds.getWidth(), lassoBounds.getHeight(), lassoCol, lassoOutlineCol, 0.0f);
