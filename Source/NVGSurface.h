@@ -123,6 +123,9 @@ private:
 
     Rectangle<int> invalidArea;
     NVGframebuffer* invalidFBO = nullptr;
+
+    NVGframebuffer* quickCanvasFBO = nullptr;
+    NVGframebuffer* quickCanvasBlurFBO = nullptr;
     int fbWidth = 0, fbHeight = 0;
 
     static inline UnorderedMap<NVGcontext*, NVGSurface*> surfaces;

@@ -76,6 +76,12 @@ public:
     PluginEditor* editor;
     PluginProcessor* pd;
 
+    std::unique_ptr<Canvas> quickCanvas;
+    Point<int> quickCanvasOffset = { 0, 0 };
+    float quickCanvasAlpha = 0.0f;
+
+    void setQuickCanvasOpacity(float opacity);
+
     void mouseDown(MouseEvent const& e) override;
     void mouseDrag(MouseEvent const& e) override;
     void mouseUp(MouseEvent const& e) override;
@@ -92,7 +98,7 @@ public:
     void focusLost(FocusChangeType cause) override;
 
     bool updateFramebuffers(NVGcontext* nvg, Rectangle<int> invalidRegion);
-    void performRender(NVGcontext* nvg, Rectangle<int> invalidRegion);
+    void performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool isQuickCanvas = false);
 
     void resized() override;
 
@@ -316,6 +322,8 @@ public:
     NVGcolor baseColBrigher;
 
 private:
+    float quickCanvasOpacity = 0.0f;
+
     void changeListenerCallback(ChangeBroadcaster* c) override;
 
     SelectedItemSet<WeakReference<Component>> previousSelectedComponents;

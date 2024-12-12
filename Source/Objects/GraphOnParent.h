@@ -188,6 +188,11 @@ public:
         return false;
     }
 
+    void mouseWheelMove(const MouseEvent &event, const MouseWheelDetails &wheel) override
+    {
+        std::cout << "mouseWheelMove: " << wheel.deltaY << std::endl;
+    }
+
     void setPdBounds(Rectangle<int> b) override
     {
         if (auto glist = ptr.get<_glist>()) {

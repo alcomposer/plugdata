@@ -402,6 +402,9 @@ Canvas::~Canvas()
     pd->unregisterMessageListener(this);
     patch.setVisible(false);
     selectedComponents.removeChangeListener(this);
+
+    if (quickCanvas)
+        quickCanvas->viewport.release();
 }
 
 void Canvas::changeListenerCallback(ChangeBroadcaster* c)
@@ -422,6 +425,12 @@ void Canvas::changeListenerCallback(ChangeBroadcaster* c)
             editor->updateSelection(this);
         }
     }
+}
+
+void Canvas::setQuickCanvasOpacity(float opacity)
+{
+    quickCanvasOpacity = opacity;
+    repaint();
 }
 
 void Canvas::lookAndFeelChanged()
@@ -586,7 +595,7 @@ bool Canvas::updateFramebuffers(NVGcontext* nvg, Rectangle<int> invalidRegion)
 }
 
 // Callback from canvasViewport to perform actual rendering
-void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion)
+void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool isQuickCanvas)
 {
     auto const halfSize = infiniteCanvasSize / 2;
     auto const zoom = getValue<float>(zoomScale);
@@ -595,17 +604,17 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion)
 
     // TODO: viewport is tested for almost all functions here, refactor it out so we don't test for it each time
     if (viewport) {
-        nvgTranslate(nvg, -viewport->getViewPositionX(), -viewport->getViewPositionY());
+        nvgTranslate(nvg, -viewport->getViewPositionX() - quickCanvasOffset.x, -viewport->getViewPositionY() - quickCanvasOffset.y);
         nvgScale(nvg, zoom, zoom);
-        invalidRegion = invalidRegion.translated(viewport->getViewPositionX(), viewport->getViewPositionY());
+        invalidRegion = invalidRegion.translated(viewport->getViewPositionX() + quickCanvasOffset.x, viewport->getViewPositionY() + quickCanvasOffset.y);
         invalidRegion /= zoom;
     }
 
-    if (viewport && isLocked) {
+    if (!isQuickCanvas && viewport && isLocked) {
         nvgFillColor(nvg, canvasBackgroundCol);
         nvgFillRect(nvg, invalidRegion.getX(), invalidRegion.getY(), invalidRegion.getWidth(), invalidRegion.getHeight());
     }
-    if (viewport && !isLocked) {
+    if (!isQuickCanvas && viewport && !isLocked) {
         nvgBeginPath(nvg);
         nvgRect(nvg, 0, 0, infiniteCanvasSize, infiniteCanvasSize);
 
@@ -700,10 +709,12 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion)
         }
     };
 
-    if (!dimensionsAreBeingEdited)
-        drawBorder(true, true);
-    else
-        drawBorder(true, false);
+    if (!isQuickCanvas) {
+        if (!dimensionsAreBeingEdited)
+            drawBorder(true, true);
+        else
+            drawBorder(true, false);
+    }
 
     // Render objects like [drawcurve], [fillcurve] etc. at the back
     for (auto drawable : drawables) {
@@ -803,8 +814,14 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion)
 
     nvgRestore(nvg);
 
+    //if (quickCanvas) {
+    //    std::cout << "rendering quick canvas region: " << invalidRegion.toString() << std::endl;
+    //    quickCanvas->performRender(nvg, quickCanvas->getBounds(), true);
+    //}
+
+
     // Draw scrollbars
-    if (viewport) {
+    if (viewport && !isQuickCanvas) {
         reinterpret_cast<CanvasViewport*>(viewport.get())->render(nvg);
     }
 }
@@ -2830,6 +2847,10 @@ void Canvas::resized()
 {
     connectionLayer.setBounds(getLocalBounds());
     objectLayer.setBounds(getLocalBounds());
+    if (quickCanvas) {
+        std::cout << "quickCanvasOffset: " << quickCanvasOffset.toString() << std::endl;
+        quickCanvas->setBounds(getLocalBounds().translated(quickCanvas->quickCanvasOffset.x, quickCanvas->quickCanvasOffset.y));
+    }
 }
 
 void Canvas::activateCanvasSearchHighlight(Object* obj)

@@ -174,6 +174,14 @@ void NVGSurface::detachContext()
             nvgDeleteFramebuffer(invalidFBO);
             invalidFBO = nullptr;
         }
+        if (quickCanvasFBO) {
+            nvgDeleteFramebuffer(quickCanvasFBO);
+            quickCanvasFBO = nullptr;
+        }
+        if (quickCanvasBlurFBO) {
+            nvgDeleteFramebuffer(quickCanvasBlurFBO);
+            quickCanvasBlurFBO = nullptr;
+        }
         if (nvg) {
             nvgDeleteContext(nvg);
             nvg = nullptr;
@@ -201,6 +209,15 @@ void NVGSurface::updateBufferSize()
         if (invalidFBO)
             nvgDeleteFramebuffer(invalidFBO);
         invalidFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
+
+        if (quickCanvasFBO)
+            nvgDeleteFramebuffer(quickCanvasFBO);
+        quickCanvasFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
+
+        if (quickCanvasBlurFBO)
+            nvgDeleteFramebuffer(quickCanvasBlurFBO);
+        quickCanvasBlurFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
+
         fbWidth = scaledWidth;
         fbHeight = scaledHeight;
         invalidArea = getLocalBounds();
@@ -358,8 +375,13 @@ void NVGSurface::render()
     } else {
         for (auto* cnv : editor->getTabComponent().getVisibleCanvases()) {
             cnv->updateFramebuffers(nvg, cnv->getLocalBounds());
+            if (cnv->quickCanvas) {
+                cnv->quickCanvas->updateFramebuffers(nvg, cnv->getLocalBounds());
+            }
         }
     }
+
+    bool quickCanvas = false;
 
     if (!invalidArea.isEmpty()) {
         // Draw only the invalidated region on top of framebuffer
@@ -378,6 +400,39 @@ void NVGSurface::render()
         frameTimer->render(nvg, getWidth(), getHeight(), pixelScale);
 #endif
 
+        if (editor->getCurrentCanvas()) {
+            if (auto cnv = editor->getCurrentCanvas()->quickCanvas.get()) {
+                quickCanvas = true;
+
+                nvgBindFramebuffer(quickCanvasBlurFBO);
+                nvgClear();
+                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
+
+                if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha))
+                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, 15 * cnv->quickCanvasAlpha, 1);
+
+                nvgBindFramebuffer(quickCanvasFBO);
+                nvgClear();
+                nvgViewport(0, 0, fbWidth, fbHeight);
+                nvgBeginFrame(nvg, getWidth() * desktopScale, getHeight() * desktopScale, devicePixelScale);
+                nvgScale(nvg, desktopScale, desktopScale);
+                cnv->performRender(nvg, invalidArea, true);
+                nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
+                nvgEndFrame(nvg);
+
+                nvgBindFramebuffer(quickCanvasBlurFBO);
+                nvgViewport(0, 0, fbWidth, fbHeight);
+                nvgBeginFrame(nvg, fbWidth, fbHeight, 1);
+                nvgGlobalScissor(nvg, 0, 0, fbWidth, fbHeight);
+                NVGpaint paint1 = nvgImagePattern(nvg, 0, 0, fbWidth, fbHeight, 0, quickCanvasFBO->image, cnv->quickCanvasAlpha);
+                nvgBeginPath(nvg);
+                nvgRect(nvg, 0, 0, fbWidth, fbHeight);
+                nvgFillPaint(nvg, paint1);
+                nvgFill(nvg);
+                nvgEndFrame(nvg);
+            }
+        }
+
         if (renderThroughImage) {
             renderFrameToImage(backupRenderImage, invalidArea);
         } else {
@@ -388,7 +443,10 @@ void NVGSurface::render()
 
     if (needsBufferSwap) {
         nvgBindFramebuffer(nullptr);
-        nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight);
+        if (!quickCanvas)
+            nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight);
+        else
+            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, 0, 0, viewWidth, viewHeight);
 
 #ifdef NANOVG_GL_IMPLEMENTATION
         glContext->swapBuffers();

@@ -8,6 +8,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_opengl/juce_opengl.h>
+
 using namespace gl;
 
 #include <nanovg.h>
@@ -15,6 +16,7 @@ using namespace gl;
 #include <utility>
 
 #include "Object.h"
+#include "Objects/ObjectBase.h"
 #include "Connection.h"
 #include "Canvas.h"
 #include "PluginEditor.h"
@@ -335,33 +337,60 @@ public:
     void timerCallback(int ID) override
     {
         switch (ID) {
-        case Timers::ResizeTimer: {
-            stopTimer(Timers::ResizeTimer);
-            cnv->isZooming = false;
+            case Timers::ResizeTimer: {
+                stopTimer(Timers::ResizeTimer);
+                cnv->isZooming = false;
 
-            // Cached geometry can look thicker/thinner at different zoom scales, so we update all cached connections when zooming is done
-            if (scaleChanged) {
-                // Cached geometry can look thicker/thinner at different zoom scales, so we reset all cached connections when zooming is done
-                NVGCachedPath::resetAll();
-            }
+                // Cached geometry can look thicker/thinner at different zoom scales, so we update all cached connections when zooming is done
+                if (scaleChanged) {
+                    // Cached geometry can look thicker/thinner at different zoom scales, so we reset all cached connections when zooming is done
+                    NVGCachedPath::resetAll();
+                }
 
-            scaleChanged = false;
-            editor->nvgSurface.invalidateAll();
-        } break;
-        case Timers::AnimationTimer: {
-            auto lerp = [](Point<int> start, Point<int> end, float t) {
-                return start.toFloat() + (end.toFloat() - start.toFloat()) * t;
-            };
-            auto movedPos = lerp(startPos, targetPos, lerpAnimation);
-            setViewPosition(movedPos.x, movedPos.y);
+                scaleChanged = false;
+                editor->nvgSurface.invalidateAll();
+            } break;
+            case Timers::AnimationTimer: {
+                auto lerp = [](Point<int> start, Point<int> end, float t) {
+                    return start.toFloat() + (end.toFloat() - start.toFloat()) * t;
+                };
+                auto movedPos = lerp(startPos, targetPos, lerpAnimation);
+                setViewPosition(movedPos.x, movedPos.y);
 
-            if (lerpAnimation >= 1.0f) {
-                stopTimer(Timers::AnimationTimer);
-                lerpAnimation = 0.0f;
-            }
+                if (lerpAnimation >= 1.0f) {
+                    stopTimer(Timers::AnimationTimer);
+                    lerpAnimation = 0.0f;
+                }
 
-            lerpAnimation += animationSpeed;
-        } break;
+                lerpAnimation += animationSpeed;
+            } break;
+            case Timers::QuickCanvasTimer: {
+                quickCanvasTimerCount = 0;
+                stopTimer(Timers::QuickCanvasTimer);
+            } break;
+            case Timers::QuickCanvasAnimationTimer: {
+                if (!cnv->quickCanvas)
+                    return;
+
+                if (quickCanvasShowingOrHiding) {
+                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha + 0.05f, 0.0f, 1.0f);
+
+                    if (approximatelyEqual(1.0f, cnv->quickCanvas->quickCanvasAlpha))
+                        stopTimer(Timers::QuickCanvasAnimationTimer);
+                } else {
+                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha - 0.05f, 0.0f, 1.0f);
+
+                    if (approximatelyEqual(0.0f, cnv->quickCanvas->quickCanvasAlpha)) {
+                        stopTimer(Timers::QuickCanvasAnimationTimer);
+                        cnv->quickCanvas->viewport.release();
+                        cnv->quickCanvas.reset();
+                    }
+                }
+                if (cnv->quickCanvas) {
+                    cnv->repaint();
+                    cnv->quickCanvas->repaint();
+                }
+            } break;
         }
     }
 
@@ -409,8 +438,60 @@ public:
         return true;
     }
 
+    void mouseMove(const MouseEvent& e) override
+    {
+        if (cnv->checkPanDragMode()) {
+            for (auto obj : cnv->objects) {
+                if (obj->getBounds().contains(e.getEventRelativeTo(cnv).getPosition())) {
+                    if (auto patch = obj->gui->getPatch()) {
+                        Image customCursorImage = ImageCache::getFromMemory(BinaryData::plugdata_logo_png, BinaryData::plugdata_logo_pngSize);
+                        MouseCursor customCursor(customCursorImage, e.x, e.y);
+                        setMouseCursor(customCursor);
+                    }
+                }
+            }
+        }
+    }
+
     void mouseWheelMove(MouseEvent const& e, MouseWheelDetails const& wheel) override
     {
+        if (cnv->checkPanDragMode()) {
+            startTimer(Timers::QuickCanvasTimer, 1000 / 10);
+            quickCanvasTimerCount++;
+            if (quickCanvasTimerCount < 3)
+                return;
+
+            startTimer(Timers::QuickCanvasAnimationTimer, 1000 / 60);
+
+            if (wheel.deltaY < 0.0f) {
+                quickCanvasShowingOrHiding = false;
+                return;
+            }
+            for (auto obj : cnv->objects) {
+                if (obj->getBounds().contains(e.getEventRelativeTo(cnv).getPosition())) {
+                    if (auto patch = obj->gui->getPatch()) {
+                        if (wheel.deltaY > 0.0f) {
+                            quickCanvasShowingOrHiding = true;
+                        }
+
+                        if (!cnv->quickCanvas) {
+                            cnv->quickCanvas = std::make_unique<Canvas>(editor, patch);
+                            cnv->addAndMakeVisible(cnv->quickCanvas.get());
+                            cnv->quickCanvas->zoomScale.referTo(cnv->zoomScale);
+                            cnv->quickCanvas->viewport.reset(this);
+                            // Move the origin of the subpatch canvas to where it is on parent
+
+                            cnv->quickCanvas->quickCanvasOffset = cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin);
+                            cnv->quickCanvas->restoreViewportState();
+                            cnv->resized();
+                        }
+                        return;
+                    }
+                }
+            }
+            return;
+        }
+
         // Check event time to filter out duplicate events
         // This is a workaround for a bug in JUCE that can cause mouse events to be duplicated when an object has a MouseListener on its parent
         if (e.eventTime == lastScrollTime)
@@ -560,8 +641,10 @@ public:
     std::function<void()> onScroll = []() { };
 
 private:
-    enum Timers { ResizeTimer,
-        AnimationTimer };
+    enum Timers { ResizeTimer, AnimationTimer, QuickCanvasTimer, QuickCanvasAnimationTimer };
+    int quickCanvasTimerCount = 0;
+    bool quickCanvasShowingOrHiding = false;
+
     Point<int> startPos;
     Point<int> targetPos;
     float lerpAnimation;
