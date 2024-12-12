@@ -603,7 +603,7 @@ bool Canvas::updateFramebuffers(NVGcontext* nvg, Rectangle<int> invalidRegion)
 }
 
 // Callback from canvasViewport to perform actual rendering
-void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool isQuickCanvas) {
+void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
     auto const halfSize = infiniteCanvasSize / 2;
     auto const zoom = getValue<float>(zoomScale);
     bool isLocked = getValue<bool>(locked);

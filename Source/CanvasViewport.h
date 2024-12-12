@@ -489,6 +489,8 @@ public:
 
                             cnv->quickCanvas->quickCanvasOffset = cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin) + patch->getGraphBounds().getPosition();
 
+                            cnv->quickCanvas->grabKeyboardFocus();
+
                             cnv->resized();
                         }
                         return;

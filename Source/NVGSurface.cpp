@@ -416,7 +416,7 @@ void NVGSurface::render()
                 nvgViewport(0, 0, fbWidth, fbHeight);
                 nvgBeginFrame(nvg, getWidth() * desktopScale, getHeight() * desktopScale, devicePixelScale);
                 nvgScale(nvg, desktopScale, desktopScale);
-                cnv->performRender(nvg, invalidArea, true);
+                cnv->performRender(nvg, invalidArea);
                 nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
                 nvgEndFrame(nvg);
 

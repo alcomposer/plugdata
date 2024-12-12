@@ -578,32 +578,18 @@ SmallArray<Canvas*> TabComponent::getCanvases()
     return allCanvases;
 }
 
-void TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area, bool isQuickCanvas)
+void TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area)
 {
-    if (isQuickCanvas) {
-        if (splits[0]) {
-            NVGScopedState scopedState(nvg);
-            nvgScissor(nvg, 0, 0, splits[1] ? (splitSize - 3) : getWidth(), getHeight());
-            splits[0]->quickCanvas->performRender(nvg, area, true);
-        }
-        if (splits[1]) {
-            NVGScopedState scopedState(nvg);
-            nvgTranslate(nvg, splitSize + 3, 0);
-            nvgScissor(nvg, 0, 0, getWidth() - (splitSize + 3), getHeight());
-            splits[1]->quickCanvas->performRender(nvg, area.translated(-(splitSize + 3), 0), true);
-        }
-    } else {
-        if (splits[0]) {
-            NVGScopedState scopedState(nvg);
-            nvgScissor(nvg, 0, 0, splits[1] ? (splitSize - 3) : getWidth(), getHeight());
-            splits[0]->performRender(nvg, area);
-        }
-        if (splits[1]) {
-            NVGScopedState scopedState(nvg);
-            nvgTranslate(nvg, splitSize + 3, 0);
-            nvgScissor(nvg, 0, 0, getWidth() - (splitSize + 3), getHeight());
-            splits[1]->performRender(nvg, area.translated(-(splitSize + 3), 0));
-        }
+    if (splits[0]) {
+        NVGScopedState scopedState(nvg);
+        nvgScissor(nvg, 0, 0, splits[1] ? (splitSize - 3) : getWidth(), getHeight());
+        splits[0]->performRender(nvg, area);
+    }
+    if (splits[1]) {
+        NVGScopedState scopedState(nvg);
+        nvgTranslate(nvg, splitSize + 3, 0);
+        nvgScissor(nvg, 0, 0, getWidth() - (splitSize + 3), getHeight());
+        splits[1]->performRender(nvg, area.translated(-(splitSize + 3), 0));
     }
 
     if (!splitDropBounds.isEmpty()) {

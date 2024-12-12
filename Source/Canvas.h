@@ -98,7 +98,7 @@ public:
     void focusLost(FocusChangeType cause) override;
 
     bool updateFramebuffers(NVGcontext* nvg, Rectangle<int> invalidRegion);
-    void performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool isQuickCanvas = false);
+    void performRender(NVGcontext* nvg, Rectangle<int> invalidRegion);
 
     void resized() override;
 
