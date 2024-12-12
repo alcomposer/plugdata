@@ -383,6 +383,8 @@ public:
                     if (approximatelyEqual(0.0f, cnv->quickCanvas->quickCanvasAlpha)) {
                         stopTimer(Timers::QuickCanvasAnimationTimer);
 
+                        cnv->quickCanvas->zoomScale.referTo(Value());
+                        cnv->quickCanvas->locked.referTo(Value());
                         cnv->quickCanvas.reset();
                     }
                 }
@@ -476,7 +478,7 @@ public:
                         }
 
                         if (!cnv->quickCanvas) {
-                            cnv->quickCanvas = std::make_unique<Canvas>(editor, patch);
+                            cnv->quickCanvas = std::make_unique<Canvas>(editor, patch, nullptr, true);
                             cnv->addAndMakeVisible(cnv->quickCanvas.get());
 
                             cnv->quickCanvas->zoomScale.referTo(cnv->zoomScale);
@@ -485,8 +487,8 @@ public:
                             cnv->quickCanvas->locked.referTo(cnv->locked);
                             cnv->quickCanvas->locked.setValue(cnv->locked);
 
-                            cnv->quickCanvas->isQuickCanvas = true;
                             cnv->quickCanvas->quickCanvasOffset = cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin) + patch->getGraphBounds().getPosition();
+
                             cnv->resized();
                         }
                         return;

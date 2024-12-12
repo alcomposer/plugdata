@@ -69,7 +69,7 @@ class Canvas : public Component
     , public NVGComponent
     , public ChangeListener {
 public:
-    Canvas(PluginEditor* parent, pd::Patch::Ptr patch, Component* parentGraph = nullptr);
+    Canvas(PluginEditor* parent, pd::Patch::Ptr patch, Component* parentGraph = nullptr, bool isQuickCanvas = false);
 
     ~Canvas() override;
 

@@ -225,7 +225,7 @@ private:
     std::function<void(Point<int>)> onMove;
 };
 
-Canvas::Canvas(PluginEditor* parent, pd::Patch::Ptr p, Component* parentGraph)
+Canvas::Canvas(PluginEditor* parent, pd::Patch::Ptr p, Component* parentGraph, bool isQuickCanvas)
     : NVGComponent(this)
     , editor(parent)
     , pd(parent->pd)
@@ -235,6 +235,7 @@ Canvas::Canvas(PluginEditor* parent, pd::Patch::Ptr p, Component* parentGraph)
     , graphArea(nullptr)
     , pathUpdater(new ConnectionPathUpdater(this))
     , globalMouseListener(this)
+    , isQuickCanvas(isQuickCanvas)
 {
     selectedComponents.addChangeListener(this);
 
@@ -293,7 +294,7 @@ Canvas::Canvas(PluginEditor* parent, pd::Patch::Ptr p, Component* parentGraph)
     } else {
         isGraph = false;
     }
-    if (!isGraph) {
+    if (!isGraph && !isQuickCanvas) {
         auto* canvasViewport = new CanvasViewport(editor, this);
 
         canvasViewport->setViewedComponent(this, false);
@@ -397,7 +398,17 @@ Canvas::~Canvas()
     }
 
     saveViewportState();
+
     zoomScale.removeListener(this);
+    commandLocked.referTo(Value());
+    commandLocked.removeListener(this);
+    patchWidth.removeListener(this);
+    patchHeight.removeListener(this);
+    xRange.removeListener(this);
+    yRange.removeListener(this);
+    isGraphChild.removeListener(this);
+    hideNameAndArgs.removeListener(this);
+
     editor->removeModifierKeyListener(this);
     pd->unregisterMessageListener(this);
     patch.setVisible(false);
@@ -592,8 +603,7 @@ bool Canvas::updateFramebuffers(NVGcontext* nvg, Rectangle<int> invalidRegion)
 }
 
 // Callback from canvasViewport to perform actual rendering
-void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool isQuickCanvas)
-{
+void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool isQuickCanvas) {
     auto const halfSize = infiniteCanvasSize / 2;
     auto const zoom = getValue<float>(zoomScale);
     bool isLocked = getValue<bool>(locked);
@@ -818,15 +828,11 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool i
 
     nvgRestore(nvg);
 
-    //if (quickCanvas) {
-    //    std::cout << "rendering quick canvas region: " << invalidRegion.toString() << std::endl;
-    //    quickCanvas->performRender(nvg, quickCanvas->getBounds(), true);
-    //}
-
-
     // Draw scrollbars
-    if (viewport && isQuickCanvas) {
+    if (viewport && !quickCanvas) {
         reinterpret_cast<CanvasViewport*>(viewport.get())->render(nvg);
+    } else if (isQuickCanvas) {
+        reinterpret_cast<CanvasViewport*>(findParentComponentOfClass<Canvas>()->viewport.get())->render(nvg);
     }
 }
 
