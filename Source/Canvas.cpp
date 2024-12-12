@@ -402,9 +402,6 @@ Canvas::~Canvas()
     pd->unregisterMessageListener(this);
     patch.setVisible(false);
     selectedComponents.removeChangeListener(this);
-
-    if (quickCanvas)
-        quickCanvas->viewport.release();
 }
 
 void Canvas::changeListenerCallback(ChangeBroadcaster* c)
@@ -602,34 +599,41 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool i
     bool isLocked = getValue<bool>(locked);
     nvgSave(nvg);
 
-    // TODO: viewport is tested for almost all functions here, refactor it out so we don't test for it each time
-    if (viewport) {
-        nvgTranslate(nvg, -viewport->getViewPositionX() - quickCanvasOffset.x, -viewport->getViewPositionY() - quickCanvasOffset.y);
+    if (auto parentCnv = findParentComponentOfClass<Canvas>(); parentCnv && parentCnv->viewport && isQuickCanvas) {
+        if (auto perentViewport = parentCnv->viewport.get()) {
+            auto viewPos = perentViewport->getViewPosition();
+            auto offset = quickCanvasOffset * zoom;
+            nvgTranslate(nvg, -viewPos.x - offset.x, -viewPos.y - offset.y);
+            nvgScale(nvg, zoom, zoom);
+            invalidRegion = invalidRegion.translated(viewPos.x + offset.x, viewPos.y + offset.y);
+            invalidRegion /= zoom;
+        }
+    } else if (viewport) {
+        nvgTranslate(nvg, -viewport->getViewPositionX(), -viewport->getViewPositionY());
         nvgScale(nvg, zoom, zoom);
-        invalidRegion = invalidRegion.translated(viewport->getViewPositionX() + quickCanvasOffset.x, viewport->getViewPositionY() + quickCanvasOffset.y);
+        invalidRegion = invalidRegion.translated(viewport->getViewPositionX(), viewport->getViewPositionY());
         invalidRegion /= zoom;
-    }
 
-    if (!isQuickCanvas && viewport && isLocked) {
-        nvgFillColor(nvg, canvasBackgroundCol);
-        nvgFillRect(nvg, invalidRegion.getX(), invalidRegion.getY(), invalidRegion.getWidth(), invalidRegion.getHeight());
-    }
-    if (!isQuickCanvas && viewport && !isLocked) {
-        nvgBeginPath(nvg);
-        nvgRect(nvg, 0, 0, infiniteCanvasSize, infiniteCanvasSize);
+        if (isLocked) {
+            nvgFillColor(nvg, canvasBackgroundCol);
+            nvgFillRect(nvg, invalidRegion.getX(), invalidRegion.getY(), invalidRegion.getWidth(), invalidRegion.getHeight());
+        } else {
+            nvgBeginPath(nvg);
+            nvgRect(nvg, 0, 0, infiniteCanvasSize, infiniteCanvasSize);
 
-        // Use least common multiple of grid sizes: 5,10,15,20,25,30 for texture size for now
-        // We repeat the texture on GPU, this is so the texture does not become too small for GPU processing
-        // There will be a best fit depending on CPU/GPU calcuations.
-        // But currently 300 works well on GPU.
-        auto gridSizeCommon = 300;
-        {
-            NVGScopedState scopedState(nvg);
-            // offset image texture by 2.5f so no dots are on the edge of the texture
-            nvgTranslate(nvg, canvasOrigin.x - 2.5f, canvasOrigin.x - 2.5f);
+            // Use least common multiple of grid sizes: 5,10,15,20,25,30 for texture size for now
+            // We repeat the texture on GPU, this is so the texture does not become too small for GPU processing
+            // There will be a best fit depending on CPU/GPU calcuations.
+            // But currently 300 works well on GPU.
+            auto gridSizeCommon = 300;
+            {
+                NVGScopedState scopedState(nvg);
+                // offset image texture by 2.5f so no dots are on the edge of the texture
+                nvgTranslate(nvg, canvasOrigin.x - 2.5f, canvasOrigin.x - 2.5f);
 
-            nvgFillPaint(nvg, nvgImagePattern(nvg, 0, 0, gridSizeCommon, gridSizeCommon, 0, dotsLargeImage.getImageId(), 1));
-            nvgFill(nvg);
+                nvgFillPaint(nvg, nvgImagePattern(nvg, 0, 0, gridSizeCommon, gridSizeCommon, 0, dotsLargeImage.getImageId(), 1));
+                nvgFill(nvg);
+            }
         }
     }
 
@@ -821,7 +825,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion, bool i
 
 
     // Draw scrollbars
-    if (viewport && !isQuickCanvas) {
+    if (viewport && isQuickCanvas) {
         reinterpret_cast<CanvasViewport*>(viewport.get())->render(nvg);
     }
 }
@@ -2848,8 +2852,8 @@ void Canvas::resized()
     connectionLayer.setBounds(getLocalBounds());
     objectLayer.setBounds(getLocalBounds());
     if (quickCanvas) {
-        std::cout << "quickCanvasOffset: " << quickCanvasOffset.toString() << std::endl;
-        quickCanvas->setBounds(getLocalBounds().translated(quickCanvas->quickCanvasOffset.x, quickCanvas->quickCanvasOffset.y));
+        auto offset = -quickCanvas->quickCanvasOffset;
+        quickCanvas->setBounds(getLocalBounds().translated(offset.x, offset.y));
     }
 }
 

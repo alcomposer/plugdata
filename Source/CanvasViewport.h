@@ -373,21 +373,21 @@ public:
                     return;
 
                 if (quickCanvasShowingOrHiding) {
-                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha + 0.05f, 0.0f, 1.0f);
+                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha + 0.1f, 0.0f, 1.0f);
 
                     if (approximatelyEqual(1.0f, cnv->quickCanvas->quickCanvasAlpha))
                         stopTimer(Timers::QuickCanvasAnimationTimer);
                 } else {
-                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha - 0.05f, 0.0f, 1.0f);
+                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha - 0.1f, 0.0f, 1.0f);
 
                     if (approximatelyEqual(0.0f, cnv->quickCanvas->quickCanvasAlpha)) {
                         stopTimer(Timers::QuickCanvasAnimationTimer);
-                        cnv->quickCanvas->viewport.release();
+
                         cnv->quickCanvas.reset();
                     }
                 }
+                cnv->repaint();
                 if (cnv->quickCanvas) {
-                    cnv->repaint();
                     cnv->quickCanvas->repaint();
                 }
             } break;
@@ -456,9 +456,10 @@ public:
     void mouseWheelMove(MouseEvent const& e, MouseWheelDetails const& wheel) override
     {
         if (cnv->checkPanDragMode()) {
+            // Triger the quick view to show / close if mouse wheel is moved 2 times up / down within 1/10th of a second
             startTimer(Timers::QuickCanvasTimer, 1000 / 10);
             quickCanvasTimerCount++;
-            if (quickCanvasTimerCount < 3)
+            if (quickCanvasTimerCount < 2)
                 return;
 
             startTimer(Timers::QuickCanvasAnimationTimer, 1000 / 60);
@@ -477,13 +478,15 @@ public:
                         if (!cnv->quickCanvas) {
                             cnv->quickCanvas = std::make_unique<Canvas>(editor, patch);
                             cnv->addAndMakeVisible(cnv->quickCanvas.get());
-                            cnv->quickCanvas->zoomScale.referTo(cnv->zoomScale);
-                            cnv->quickCanvas->viewport.reset(this);
-                            cnv->quickCanvas->isQuickCanvas = true;
-                            // Move the origin of the subpatch canvas to where it is on parent
 
-                            cnv->quickCanvas->quickCanvasOffset = cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin);
-                            cnv->quickCanvas->restoreViewportState();
+                            cnv->quickCanvas->zoomScale.referTo(cnv->zoomScale);
+                            cnv->quickCanvas->zoomScale.setValue(cnv->zoomScale);
+
+                            cnv->quickCanvas->locked.referTo(cnv->locked);
+                            cnv->quickCanvas->locked.setValue(cnv->locked);
+
+                            cnv->quickCanvas->isQuickCanvas = true;
+                            cnv->quickCanvas->quickCanvasOffset = cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin) + patch->getGraphBounds().getPosition();
                             cnv->resized();
                         }
                         return;

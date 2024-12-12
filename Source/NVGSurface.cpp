@@ -313,7 +313,8 @@ void NVGSurface::invalidateAll()
 
 void NVGSurface::invalidateArea(Rectangle<int> area)
 {
-    invalidArea = invalidArea.getUnion(area);
+    // TEMP !!!! SET FULL REPAINT WHILE QUICK CANVAS IS BEING WORKED ON !!!!
+    invalidArea = invalidArea.getUnion(getLocalBounds());//(area);
 }
 
 void NVGSurface::render()
@@ -405,7 +406,6 @@ void NVGSurface::render()
                 quickCanvas = true;
 
                 nvgBindFramebuffer(quickCanvasBlurFBO);
-                nvgClear();
                 nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
 
                 if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha))
