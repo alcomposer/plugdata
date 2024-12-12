@@ -479,6 +479,7 @@ public:
                             cnv->addAndMakeVisible(cnv->quickCanvas.get());
                             cnv->quickCanvas->zoomScale.referTo(cnv->zoomScale);
                             cnv->quickCanvas->viewport.reset(this);
+                            cnv->quickCanvas->isQuickCanvas = true;
                             // Move the origin of the subpatch canvas to where it is on parent
 
                             cnv->quickCanvas->quickCanvasOffset = cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin);

@@ -236,6 +236,7 @@ public:
 
     bool isZooming : 1 = false;
     bool isGraph : 1 = false;
+    bool isQuickCanvas  : 1 = false;
     bool isDraggingLasso : 1 = false;
     bool needsSearchUpdate : 1 = false;
 
