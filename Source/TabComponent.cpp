@@ -598,9 +598,11 @@ void TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area)
     }
 
     if (splits[1]) {
+        // Draw gab between splits
         nvgFillColor(nvg, NVGComponent::convertColour(findColour(PlugDataColour::canvasBackgroundColourId)));
         nvgFillRect(nvg, splitSize - 3, 0, 6, getHeight());
 
+        // Draw highlight around active split
         auto activeSplitBounds = activeSplitIndex ? Rectangle<int>(splitSize, 0, getWidth() - splitSize, getHeight() - 31) : Rectangle<int>(0, 0, splitSize, getHeight() - 31);
 
         nvgStrokeWidth(nvg, 3.0f);
