@@ -409,7 +409,7 @@ void NVGSurface::render()
                 nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
 
                 if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha))
-                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, 15 * cnv->quickCanvasAlpha, 1);
+                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, 15 * cnv->quickCanvasAlpha, 1.0f);
 
                 nvgBindFramebuffer(quickCanvasFBO);
                 nvgClear();

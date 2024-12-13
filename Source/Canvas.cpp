@@ -595,7 +595,7 @@ bool Canvas::updateFramebuffers(NVGcontext* nvg, Rectangle<int> invalidRegion)
                     float centerY = static_cast<float>(y) + 2.5f;
                     g.fillEllipse(centerX - ellipseRadius, centerY - ellipseRadius, ellipseRadius * 2.0f, ellipseRadius * 2.0f);
                 }
-            } }, NVGImage::RepeatImage, canvasBackgroundColJuce);
+            } }, NVGImage::RepeatImage);
         editor->nvgSurface.invalidateAll();
     }
 
@@ -623,11 +623,13 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
         nvgScale(nvg, zoom, zoom);
         invalidRegion = invalidRegion.translated(viewport->getViewPositionX(), viewport->getViewPositionY());
         invalidRegion /= zoom;
-
-        if (isLocked) {
+    }
+    if (isQuickCanvas || viewport) {
+        if (!isQuickCanvas) {
             nvgFillColor(nvg, canvasBackgroundCol);
             nvgFillRect(nvg, invalidRegion.getX(), invalidRegion.getY(), invalidRegion.getWidth(), invalidRegion.getHeight());
-        } else {
+        }
+        if ((!isLocked && isQuickCanvas) || (!isLocked && !quickCanvas)) {
             nvgBeginPath(nvg);
             nvgRect(nvg, 0, 0, infiniteCanvasSize, infiniteCanvasSize);
 
@@ -648,7 +650,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
     }
 
     auto drawBorder = [this, nvg, zoom](bool bg, bool fg) {
-        if (viewport && (showOrigin || showBorder) && !::getValue<bool>(presentationMode)) {
+        if ((showOrigin || showBorder) && !::getValue<bool>(presentationMode)) {
             NVGScopedState scopedState(nvg);
             nvgBeginPath(nvg);
 
@@ -660,6 +662,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
             if (zoom < 0.3f && getRenderScale() <= 1.0f)
                 scaledStrokeSize = jmap(zoom, 0.3f, 0.25f, 4.0f, 8.0f);
 
+            /*
             if (bg) {
                 nvgBeginPath(nvg);
                 nvgMoveTo(nvg, pos.x, pos.y);
@@ -680,6 +683,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
                 nvgFillColor(nvg, canvasBackgroundCol);
                 nvgFillRect(nvg, pos.x - 1.0f, pos.y - 1.0f, 2, 2);
             }
+            */
 
             nvgStrokeColor(nvg, canvasMarkingsCol);
             nvgStrokeWidth(nvg, scaledStrokeSize);
@@ -723,7 +727,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
         }
     };
 
-    if (!isQuickCanvas) {
+    if (isQuickCanvas || (viewport && !quickCanvas)) {
         if (!dimensionsAreBeingEdited)
             drawBorder(true, true);
         else
