@@ -466,6 +466,13 @@ public:
 
     void mouseWheelMove(MouseEvent const& e, MouseWheelDetails const& wheel) override
     {
+        // Check event time to filter out duplicate events
+        // This is a workaround for a bug in JUCE that can cause mouse events to be duplicated when an object has a MouseListener on its parent
+        if (e.eventTime == lastScrollTime)
+            return;
+
+        lastScrollTime = e.eventTime;
+
         if (cnv->checkPanDragMode()) {
             // Triger the quick view to show / close if mouse wheel is moved 2 times up / down within 1/10th of a second
             startTimer(Timers::QuickCanvasTimer, 1000 / 10);
@@ -479,14 +486,19 @@ public:
                 quickCanvasShowingOrHiding = false;
                 return;
             }
-            for (auto obj : cnv->objects) {
-                if (obj->getBounds().contains(e.getEventRelativeTo(cnv).getPosition())) {
-                    if (auto patch = obj->gui->getPatch()) {
-                        if (wheel.deltaY > 0.0f) {
-                            quickCanvasShowingOrHiding = true;
-                        }
+            if (wheel.deltaY > 0.0f) {
+                quickCanvasShowingOrHiding = true;
+            }
+            if (cnv->quickCanvas && quickCanvasShowingOrHiding) {
+                // TODO: Scroll up on an existing quick canvas enters it
+            }
+            if (!cnv->quickCanvas && quickCanvasShowingOrHiding) {
+                for (auto obj: cnv->objects) {
+                    if (obj->getBounds().contains(e.getEventRelativeTo(cnv).getPosition())) {
+                        if (auto patch = obj->gui->getPatch()) {
+                            
+                            quickCanvasTimerCount = 0;
 
-                        if (!cnv->quickCanvas) {
                             cnv->quickCanvas = std::make_unique<Canvas>(editor, patch, nullptr, true);
                             cnv->addAndMakeVisible(cnv->quickCanvas.get());
 
@@ -496,23 +508,20 @@ public:
                             cnv->quickCanvas->locked.referTo(cnv->locked);
                             cnv->quickCanvas->locked.setValue(cnv->locked);
 
-                            cnv->quickCanvas->quickCanvasOffset = cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin) + patch->getGraphBounds().getPosition();
+                            cnv->quickCanvas->quickCanvasOffset =
+                                    cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin) +
+                                    patch->getGraphBounds().getPosition();
 
                             cnv->quickCanvas->grabKeyboardFocus();
 
                             cnv->resized();
+                            return;
                         }
-                        return;
                     }
                 }
             }
             return;
         }
-
-        // Check event time to filter out duplicate events
-        // This is a workaround for a bug in JUCE that can cause mouse events to be duplicated when an object has a MouseListener on its parent
-        if (e.eventTime == lastScrollTime)
-            return;
 
         // Cancel the animation timer for the search panel
         stopTimer(Timers::AnimationTimer);
@@ -522,7 +531,6 @@ public:
         }
 
         Viewport::mouseWheelMove(e, wheel);
-        lastScrollTime = e.eventTime;
     }
 
     void mouseMagnify(MouseEvent const& e, float scrollFactor) override
