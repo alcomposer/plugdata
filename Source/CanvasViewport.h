@@ -35,15 +35,24 @@ class CanvasViewport : public Viewport
         {
         }
 
-        void enablePanning(bool enabled)
+        void enablePanning(bool enabled, Canvas* canvas = nullptr)
         {
-            if (auto* viewedComponent = viewport->getViewedComponent()) {
-                if (enabled) {
-                    viewedComponent->addMouseListener(this, false);
-                } else {
-                    viewedComponent->removeMouseListener(this);
+            auto attachMouseListnerToCanvas = [this, enabled](Component* component) -> bool {
+                if (component) {
+                    if (enabled) {
+                        component->addMouseListener(this, false);
+                    } else {
+                        component->removeMouseListener(this);
+                    }
+                    return true;
                 }
-            }
+                return false;
+            };
+
+            if (attachMouseListnerToCanvas(canvas))
+                return;
+
+            attachMouseListnerToCanvas(viewport->getViewedComponent());
         }
 
         // warning: this only works because Canvas::mouseDown gets called before the listener's mouse down
@@ -429,9 +438,9 @@ public:
         vbar.repaint();
     }
 
-    void enableMousePanning(bool enablePanning)
+    void enableMousePanning(bool enablePanning, Canvas* canvas = nullptr)
     {
-        panner.enablePanning(enablePanning);
+        panner.enablePanning(enablePanning, canvas);
     }
 
     bool hitTest(int x, int y) override

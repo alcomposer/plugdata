@@ -2713,6 +2713,12 @@ bool Canvas::setPanDragMode(bool shouldPan)
         v->enableMousePanning(shouldPan);
         return true;
     }
+    if (isQuickCanvas) {
+        if (auto v = dynamic_cast<CanvasViewport*>(dynamic_cast<Canvas*>(getParentComponent())->viewport.get())) {
+            v->enableMousePanning(shouldPan, this);
+            return true;
+        }
+    }
     return false;
 }
 
