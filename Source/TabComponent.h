@@ -24,7 +24,7 @@ public:
 
     void openInPluginMode(pd::Patch::Ptr patch);
 
-    void renderArea(NVGcontext* nvg, Rectangle<int> bounds);
+    bool renderArea(NVGcontext* nvg, Rectangle<int> bounds, bool renderQuickCanvas = false);
 
     void nextTab();
     void previousTab();

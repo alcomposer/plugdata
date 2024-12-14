@@ -382,7 +382,7 @@ void NVGSurface::render()
         }
     }
 
-    bool quickCanvas = false;
+    bool doQuickCanvasPass = false;
 
     if (!invalidArea.isEmpty()) {
         // Draw only the invalidated region on top of framebuffer
@@ -393,7 +393,7 @@ void NVGSurface::render()
 #endif
         nvgBeginFrame(nvg, getWidth() * desktopScale, getHeight() * desktopScale, devicePixelScale);
         nvgScale(nvg, desktopScale, desktopScale);
-        editor->renderArea(nvg, invalidArea);
+        doQuickCanvasPass = editor->renderArea(nvg, invalidArea);
         nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
         nvgEndFrame(nvg);
 
@@ -401,26 +401,24 @@ void NVGSurface::render()
         frameTimer->render(nvg, getWidth(), getHeight(), pixelScale);
 #endif
 
-        if (editor->getCurrentCanvas()) {
+        if (doQuickCanvasPass) {
             if (auto cnv = editor->getCurrentCanvas()->quickCanvas.get()) {
-                quickCanvas = true;
-
-                nvgBindFramebuffer(quickCanvasBlurFBO);
-                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
-
-                if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha))
-                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, 15 * cnv->quickCanvasAlpha, 1.0f);
-
                 nvgBindFramebuffer(quickCanvasFBO);
                 nvgClear();
                 nvgViewport(0, 0, fbWidth, fbHeight);
                 nvgBeginFrame(nvg, getWidth() * desktopScale, getHeight() * desktopScale, devicePixelScale);
                 nvgScale(nvg, desktopScale, desktopScale);
-                cnv->performRender(nvg, invalidArea);
+                editor->renderArea(nvg, invalidArea, true);
                 nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
                 nvgEndFrame(nvg);
 
                 nvgBindFramebuffer(quickCanvasBlurFBO);
+                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
+
+                if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha)) {
+                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * 15, 1.0f);
+                }
+
                 nvgViewport(0, 0, fbWidth, fbHeight);
                 nvgBeginFrame(nvg, fbWidth, fbHeight, 1);
                 nvgGlobalScissor(nvg, 0, 0, fbWidth, fbHeight);
@@ -443,10 +441,10 @@ void NVGSurface::render()
 
     if (needsBufferSwap) {
         nvgBindFramebuffer(nullptr);
-        if (!quickCanvas)
-            nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight);
-        else
+        if (doQuickCanvasPass)
             nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, 0, 0, viewWidth, viewHeight);
+        else
+            nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight);
 
 #ifdef NANOVG_GL_IMPLEMENTATION
         glContext->swapBuffers();

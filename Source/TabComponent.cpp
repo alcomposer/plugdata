@@ -578,24 +578,40 @@ SmallArray<Canvas*> TabComponent::getCanvases()
     return allCanvases;
 }
 
-void TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area)
+bool TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area, bool renderQuickCanvas)
 {
+    bool isQuickCanvasShowing = false;
+
     if (splits[0]) {
         NVGScopedState scopedState(nvg);
         nvgScissor(nvg, 0, 0, splits[1] ? (splitSize - 3) : getWidth(), getHeight());
-        splits[0]->performRender(nvg, area);
+        if (renderQuickCanvas && splits[0]->quickCanvas)
+            splits[0]->quickCanvas->performRender(nvg, area);
+        else
+            splits[0]->performRender(nvg, area);
+
+        isQuickCanvasShowing |= static_cast<bool>(splits[0]->quickCanvas.get());
     }
     if (splits[1]) {
         NVGScopedState scopedState(nvg);
         nvgTranslate(nvg, splitSize + 3, 0);
         nvgScissor(nvg, 0, 0, getWidth() - (splitSize + 3), getHeight());
-        splits[1]->performRender(nvg, area.translated(-(splitSize + 3), 0));
+
+        if (renderQuickCanvas && splits[1]->quickCanvas)
+            splits[1]->quickCanvas->performRender(nvg, area.translated(-(splitSize + 3), 0));
+        else
+            splits[1]->performRender(nvg, area.translated(-(splitSize + 3), 0));
+
+        isQuickCanvasShowing |= static_cast<bool>(splits[1]->quickCanvas.get());
     }
 
     if (!splitDropBounds.isEmpty()) {
         nvgFillColor(nvg, NVGComponent::convertColour(findColour(PlugDataColour::dataColourId).withAlpha(0.1f)));
         nvgFillRect(nvg, splitDropBounds.getX(), splitDropBounds.getY(), splitDropBounds.getWidth(), splitDropBounds.getHeight());
     }
+
+    if (isQuickCanvasShowing && !renderQuickCanvas)
+        return true;
 
     if (splits[1]) {
         // Draw gab between splits
@@ -609,6 +625,8 @@ void TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area)
         nvgStrokeColor(nvg, NVGComponent::convertColour(findColour(PlugDataColour::objectSelectedOutlineColourId).withAlpha(0.25f)));
         nvgStrokeRect(nvg, activeSplitBounds.getX(), activeSplitBounds.getY(), activeSplitBounds.getWidth(), activeSplitBounds.getHeight());
     }
+
+    return false;
 }
 
 void TabComponent::mouseDown(MouseEvent const& e)

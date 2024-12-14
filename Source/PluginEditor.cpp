@@ -462,8 +462,10 @@ void PluginEditor::paintOverChildren(Graphics& g)
     }
 }
 
-void PluginEditor::renderArea(NVGcontext* nvg, Rectangle<int> area)
+bool PluginEditor::renderArea(NVGcontext* nvg, Rectangle<int> area, bool quickCanvasPass)
 {
+    bool ret = false;
+
     if (isInPluginMode()) {
         pluginMode->render(nvg);
     } else {
@@ -471,7 +473,7 @@ void PluginEditor::renderArea(NVGcontext* nvg, Rectangle<int> area)
             NVGScopedState scopedState(nvg);
             welcomePanel->render(nvg);
         } else {
-            tabComponent.renderArea(nvg, area);
+            ret = tabComponent.renderArea(nvg, area, quickCanvasPass);
 
             if (touchSelectionHelper && touchSelectionHelper->isVisible() && area.intersects(touchSelectionHelper->getBounds() - nvgSurface.getPosition())) {
                 NVGScopedState scopedState(nvg);
@@ -480,6 +482,7 @@ void PluginEditor::renderArea(NVGcontext* nvg, Rectangle<int> area)
             }
         }
     }
+    return ret;
 }
 
 CallOutBox& PluginEditor::showCalloutBox(std::unique_ptr<Component> content, Rectangle<int> screenBounds)

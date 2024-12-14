@@ -85,7 +85,7 @@ public:
     void paint(Graphics& g) override;
     void paintOverChildren(Graphics& g) override;
 
-    void renderArea(NVGcontext* nvg, Rectangle<int> area);
+    bool renderArea(NVGcontext* nvg, Rectangle<int> area, bool quickCanvasPass = false);
 
     bool isActiveWindow() override;
 
