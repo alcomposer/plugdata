@@ -490,7 +490,7 @@ public:
                 quickCanvasShowingOrHiding = true;
             }
             if (cnv->quickCanvas && quickCanvasShowingOrHiding) {
-                // TODO: Scroll up on an existing quick canvas enters it
+                // TODO: Enter quick canvas, replace the current canvas with the quick canvas completely
             }
             if (!cnv->quickCanvas && quickCanvasShowingOrHiding) {
                 for (auto obj: cnv->objects) {
@@ -505,7 +505,6 @@ public:
                             cnv->quickCanvas->zoomScale.referTo(cnv->zoomScale);
                             cnv->quickCanvas->zoomScale.setValue(cnv->zoomScale);
 
-                            cnv->quickCanvas->locked.referTo(cnv->locked);
                             cnv->quickCanvas->locked.setValue(cnv->locked);
 
                             cnv->quickCanvas->quickCanvasOffset =

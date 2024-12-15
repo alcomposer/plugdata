@@ -105,7 +105,7 @@ public:
     void quit(bool askToSave);
 
     SmallArray<Canvas*> getCanvases();
-    Canvas* getCurrentCanvas();
+    Canvas* getCurrentCanvas(bool returnBaseCanvas = false);
 
     void modifierKeysChanged(ModifierKeys const& modifiers) override;
 

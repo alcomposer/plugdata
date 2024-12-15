@@ -864,9 +864,15 @@ SmallArray<Canvas*> PluginEditor::getCanvases()
     return tabComponent.getCanvases();
 }
 
-Canvas* PluginEditor::getCurrentCanvas()
+Canvas* PluginEditor::getCurrentCanvas(bool returnBaseCanvas)
 {
-    return tabComponent.getCurrentCanvas();
+    if (auto cnv = tabComponent.getCurrentCanvas()) {
+        if (auto quickCanvas = cnv->quickCanvas.get(); quickCanvas && !returnBaseCanvas)
+            return quickCanvas;
+
+        return cnv;
+    }
+    return nullptr;
 }
 
 void PluginEditor::valueChanged(Value& v)

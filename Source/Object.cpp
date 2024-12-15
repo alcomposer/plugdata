@@ -436,7 +436,7 @@ void Object::setType(String const& newType, pd::WeakReference existingObject)
 
     editor->updateCommandStatus();
 
-    cnv->synchroniseSplitCanvas();
+    cnv->synchroniseAllCanvases();
     cnv->pd->updateObjectImplementations();
 }
 

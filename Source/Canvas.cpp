@@ -1130,15 +1130,8 @@ void Canvas::synchroniseAllCanvases()
     for (auto* editorWindow : pd->getEditors()) {
         for (auto* canvas : editorWindow->getTabComponent().getVisibleCanvases()) {
             canvas->synchronise();
-        }
-    }
-}
-
-void Canvas::synchroniseSplitCanvas()
-{
-    for (auto* e : pd->getEditors()) {
-        for (auto* canvas : e->getTabComponent().getVisibleCanvases()) {
-            canvas->synchronise();
+            if (auto* quickCanvas = canvas->quickCanvas.get())
+                quickCanvas->synchronise();
         }
     }
 }
@@ -1365,6 +1358,8 @@ void Canvas::altKeyChanged(bool isHeld)
 
 void Canvas::mouseDown(MouseEvent const& e)
 {
+    std::cout << "mouse down on: " << (isQuickCanvas ? "quick " : "normal ") << e.getPosition().toString() << std::endl;
+
     if (isGraph)
         return;
 
@@ -1482,8 +1477,10 @@ void Canvas::mouseDrag(MouseEvent const& e)
         return;
     }
 
-    auto viewportEvent = e.getEventRelativeTo(viewport.get());
-    if (viewport && !ObjectBase::isBeingEdited() && autoscroll(viewportEvent)) {
+    auto usedViewport = isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
+
+    auto viewportEvent = e.getEventRelativeTo(usedViewport);
+    if (usedViewport && !ObjectBase::isBeingEdited() && autoscroll(viewportEvent)) {
         beginDragAutoRepeat(25);
     }
 
@@ -1724,6 +1721,8 @@ void Canvas::copySelection()
 
 void Canvas::focusGained(FocusChangeType cause)
 {
+    std::cout << "focusGained on: " << (isQuickCanvas ? "quick canvas" : "base canvas" ) << std::endl;
+
     pd->openedEditors.move(pd->openedEditors.indexOf(editor), 0);
 
     pd->enqueueFunctionAsync([pd = this->pd, patchPtr = patch.getUncheckedPointer(), hasFocus = static_cast<float>(hasKeyboardFocus(true))]() {
@@ -1743,6 +1742,8 @@ void Canvas::focusGained(FocusChangeType cause)
 
 void Canvas::focusLost(FocusChangeType cause)
 {
+    std::cout << "focusLost on: " << (isQuickCanvas ? "quick canvas" : "base canvas" ) << std::endl;
+
     pd->enqueueFunctionAsync([pd = this->pd, patchPtr = patch.getUncheckedPointer(), hasFocus = static_cast<float>(hasKeyboardFocus(true))]() {
         auto* activeGui = pd->generateSymbol("#active_gui")->s_thing;
         auto* hammarGui = pd->generateSymbol("#hammergui")->s_thing;
@@ -1930,9 +1931,14 @@ void Canvas::duplicateSelection()
     selectionBounds = selectionBounds.transformedBy(getTransform());
 
     // Adjust the viewport position to ensure the duplicated objects are visible
-    auto viewportPos = viewport->getViewPosition();
-    auto viewWidth = viewport->getWidth();
-    auto viewHeight = viewport->getHeight();
+    auto usedViewport = isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
+
+    auto viewportPos = usedViewport->getViewPosition();
+
+    std::cout << "================ changing viewport pos: " << viewportPos.toString() << std::endl;
+
+    auto viewWidth = usedViewport->getWidth();
+    auto viewHeight = usedViewport->getHeight();
     if (!selectionBounds.isEmpty()) {
         int deltaX = 0, deltaY = 0;
 
@@ -1949,7 +1955,7 @@ void Canvas::duplicateSelection()
         }
 
         // Set the new viewport position
-        viewport->setViewPosition(viewportPos + Point<int>(deltaX, deltaY));
+        usedViewport->setViewPosition(viewportPos + Point<int>(deltaX, deltaY));
     }
 
     dragState.wasDuplicated = true;
@@ -2008,7 +2014,7 @@ void Canvas::removeSelection()
 
     patch.deselectAll();
 
-    synchroniseSplitCanvas();
+    synchroniseAllCanvases();
 }
 
 void Canvas::removeSelectedConnections()
@@ -2032,7 +2038,7 @@ void Canvas::removeSelectedConnections()
     synchronise();
     handleUpdateNowIfNeeded();
 
-    synchroniseSplitCanvas();
+    synchroniseAllCanvases();
 }
 
 void Canvas::cycleSelection()
@@ -2527,7 +2533,7 @@ void Canvas::undo()
 
     patch.deselectAll();
 
-    synchroniseSplitCanvas();
+    synchroniseAllCanvases();
     updateSidebarSelection();
 }
 
@@ -2542,7 +2548,7 @@ void Canvas::redo()
 
     patch.deselectAll();
 
-    synchroniseSplitCanvas();
+    synchroniseAllCanvases();
     updateSidebarSelection();
 }
 
@@ -2582,6 +2588,7 @@ void Canvas::valueChanged(Value& v)
     }
     // When lock changes
     else if (v.refersToSameSourceAs(locked)) {
+
         bool editMode = !getValue<bool>(v);
 
         if (auto ptr = patch.getPointer()) {
@@ -2674,6 +2681,7 @@ void Canvas::showSuggestions(Object* object, TextEditor* textEditor)
 }
 void Canvas::hideSuggestions()
 {
+    std::cout << "hideSuggestions" << std::endl;
     suggestor->removeCalloutBox();
 }
 
@@ -2856,7 +2864,7 @@ void Canvas::receiveMessage(t_symbol* symbol, SmallArray<pd::Atom> const& atoms)
     case hash("donecanvasdialog"): {
         if (auto* cnv = editor->getCurrentCanvas()) {
             cnv->synchronise();
-            cnv->synchroniseSplitCanvas();
+            cnv->synchroniseAllCanvases();
         }
         break;
     }

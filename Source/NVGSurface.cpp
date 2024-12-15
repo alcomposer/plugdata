@@ -402,7 +402,7 @@ void NVGSurface::render()
 #endif
 
         if (doQuickCanvasPass) {
-            if (auto cnv = editor->getCurrentCanvas()->quickCanvas.get()) {
+            if (auto cnv = editor->getCurrentCanvas(); cnv && cnv->isQuickCanvas) {
                 nvgBindFramebuffer(quickCanvasFBO);
                 nvgClear();
                 nvgViewport(0, 0, fbWidth, fbHeight);
