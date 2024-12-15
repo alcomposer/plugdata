@@ -394,6 +394,7 @@ public:
 
                         cnv->quickCanvas->zoomScale.referTo(Value());
                         cnv->quickCanvas->locked.referTo(Value());
+                        //removeMouseListener(cnv->quickCanvas.get());
                         cnv->quickCanvas.reset();
                     }
                 }
@@ -506,6 +507,9 @@ public:
                             cnv->quickCanvas->zoomScale.setValue(cnv->zoomScale);
 
                             cnv->quickCanvas->locked.setValue(cnv->locked);
+
+                            //TODO: this causes duplicate events on quick canvas
+                            //addMouseListener(cnv->quickCanvas.get(), true);
 
                             cnv->quickCanvas->quickCanvasOffset =
                                     cnv->canvasOrigin - obj->getPosition().translated(Object::margin, Object::margin) +

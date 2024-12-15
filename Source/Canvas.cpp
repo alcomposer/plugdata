@@ -1261,8 +1261,14 @@ void Canvas::performSynchronise()
         }
     }
 
-    if (!isGraph) {
+    if (!isGraph && !isQuickCanvas) {
         setTransform(AffineTransform().scaled(getValue<float>(zoomScale)));
+    }
+
+    if (isQuickCanvas) {
+        if (auto baseCanvas = findParentComponentOfClass<Canvas>()) {
+            baseCanvas->setTransform(AffineTransform().scaled(getValue<float>(zoomScale)));
+        }
     }
 
     if (graphArea)
@@ -1493,29 +1499,31 @@ void Canvas::mouseDrag(MouseEvent const& e)
 
 bool Canvas::autoscroll(MouseEvent const& e)
 {
-    if (!viewport)
+    auto usedViewport = isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
+
+    if (!usedViewport)
         return false;
 
-    auto x = viewport->getViewPositionX();
-    auto y = viewport->getViewPositionY();
+    auto x = usedViewport->getViewPositionX();
+    auto y = usedViewport->getViewPositionY();
     auto oldY = y;
     auto oldX = x;
 
     auto pos = e.getPosition();
 
-    if (pos.x > viewport->getWidth()) {
-        x += std::clamp((pos.x - viewport->getWidth()) / 6, 1, 14);
+    if (pos.x > usedViewport->getWidth()) {
+        x += std::clamp((pos.x - usedViewport->getWidth()) / 6, 1, 14);
     } else if (pos.x < 0) {
         x -= std::clamp(-pos.x / 6, 1, 14);
     }
-    if (pos.y > viewport->getHeight()) {
-        y += std::clamp((pos.y - viewport->getHeight()) / 6, 1, 14);
+    if (pos.y > usedViewport->getHeight()) {
+        y += std::clamp((pos.y - usedViewport->getHeight()) / 6, 1, 14);
     } else if (pos.y < 0) {
         y -= std::clamp(-pos.y / 6, 1, 14);
     }
 
     if (x != oldX || y != oldY) {
-        viewport->setViewPosition(x, y);
+        usedViewport->setViewPosition(x, y);
         return true;
     }
 
@@ -1928,14 +1936,17 @@ void Canvas::duplicateSelection()
         selectionBounds = selectionBounds.getUnion(obj->getBounds());
     }
 
-    selectionBounds = selectionBounds.transformedBy(getTransform());
+    // Only a quick-canvas will have a non-zero offset
+    // We offset here before the coordinate space is transformed
+    selectionBounds.translate(-quickCanvasOffset.x, -quickCanvasOffset.y);
+    selectionBounds = selectionBounds.transformedBy(isQuickCanvas ? findParentComponentOfClass<Canvas>()->getTransform() : getTransform());
 
     // Adjust the viewport position to ensure the duplicated objects are visible
+
+    // Use the base canvas viewport (quick canvas uses base canvas viewport)
     auto usedViewport = isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
 
     auto viewportPos = usedViewport->getViewPosition();
-
-    std::cout << "================ changing viewport pos: " << viewportPos.toString() << std::endl;
 
     auto viewWidth = usedViewport->getWidth();
     auto viewHeight = usedViewport->getHeight();
@@ -2877,6 +2888,7 @@ void Canvas::resized()
     objectLayer.setBounds(getLocalBounds());
     if (quickCanvas) {
         auto offset = -quickCanvas->quickCanvasOffset;
+        //std::cout << "quickCanvas->quickCanvasOffset: " << quickCanvas->quickCanvasOffset.toString() << " offset: " << offset.toString() << std::endl;
         quickCanvas->setBounds(getLocalBounds().translated(offset.x, offset.y));
     }
 }

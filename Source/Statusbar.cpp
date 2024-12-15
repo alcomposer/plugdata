@@ -1240,7 +1240,7 @@ private:
             return;
 
         auto* editor = findParentComponentOfClass<PluginEditor>();
-        if (auto* cnv = editor->getCurrentCanvas()) {
+        if (auto* cnv = editor->getCurrentCanvas(true)) {
             auto defaultZoom = SettingsFile::getInstance()->getProperty<float>("default_zoom") / 100.0f;
             cnv->zoomScale.setValue(defaultZoom);
             cnv->setTransform(AffineTransform().scaled(defaultZoom));
