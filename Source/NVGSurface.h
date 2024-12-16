@@ -126,6 +126,7 @@ private:
 
     NVGframebuffer* quickCanvasFBO = nullptr;
     NVGframebuffer* quickCanvasBlurFBO = nullptr;
+    NVGframebuffer* quickCanvasBlurProcessFBO = nullptr;
     int fbWidth = 0, fbHeight = 0;
 
     static inline UnorderedMap<NVGcontext*, NVGSurface*> surfaces;

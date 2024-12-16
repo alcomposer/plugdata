@@ -182,6 +182,10 @@ void NVGSurface::detachContext()
             nvgDeleteFramebuffer(quickCanvasBlurFBO);
             quickCanvasBlurFBO = nullptr;
         }
+        if (quickCanvasBlurProcessFBO) {
+            nvgDeleteFramebuffer(quickCanvasBlurProcessFBO);
+            quickCanvasBlurProcessFBO = nullptr;
+        }
         if (nvg) {
             nvgDeleteContext(nvg);
             nvg = nullptr;
@@ -217,6 +221,10 @@ void NVGSurface::updateBufferSize()
         if (quickCanvasBlurFBO)
             nvgDeleteFramebuffer(quickCanvasBlurFBO);
         quickCanvasBlurFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
+
+        if (quickCanvasBlurProcessFBO)
+            nvgDeleteFramebuffer(quickCanvasBlurProcessFBO);
+        quickCanvasBlurProcessFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
 
         fbWidth = scaledWidth;
         fbHeight = scaledHeight;
@@ -416,8 +424,10 @@ void NVGSurface::render()
                 nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
 
                 if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha)) {
-                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * 15, 1.0f);
+                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, quickCanvasBlurProcessFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
                 }
+
+                nvgBindFramebuffer(quickCanvasBlurFBO);
 
                 nvgViewport(0, 0, fbWidth, fbHeight);
                 nvgBeginFrame(nvg, fbWidth, fbHeight, 1);

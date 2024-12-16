@@ -2692,7 +2692,6 @@ void Canvas::showSuggestions(Object* object, TextEditor* textEditor)
 }
 void Canvas::hideSuggestions()
 {
-    std::cout << "hideSuggestions" << std::endl;
     suggestor->removeCalloutBox();
 }
 
