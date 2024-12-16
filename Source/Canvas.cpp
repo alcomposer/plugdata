@@ -629,7 +629,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
             nvgFillColor(nvg, canvasBackgroundCol);
             nvgFillRect(nvg, invalidRegion.getX(), invalidRegion.getY(), invalidRegion.getWidth(), invalidRegion.getHeight());
         }
-        if ((!isLocked && isQuickCanvas) || (!isLocked && !quickCanvas)) {
+        if (!isLocked) {
             nvgBeginPath(nvg);
             nvgRect(nvg, 0, 0, infiniteCanvasSize, infiniteCanvasSize);
 
@@ -727,7 +727,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
         }
     };
 
-    if (isQuickCanvas || (viewport && !quickCanvas)) {
+    if (isQuickCanvas || viewport) {
         if (!dimensionsAreBeingEdited)
             drawBorder(true, true);
         else

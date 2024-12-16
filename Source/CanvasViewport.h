@@ -381,19 +381,19 @@ public:
                 if (!cnv->quickCanvas)
                     return;
 
+                float animationSpeed = 0.1f;
+
                 if (quickCanvasShowingOrHiding) {
-                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha + 0.1f, 0.0f, 1.0f);
+                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha + animationSpeed, 0.0f, 1.0f);
 
                     if (approximatelyEqual(1.0f, cnv->quickCanvas->quickCanvasAlpha))
                         stopTimer(Timers::QuickCanvasAnimationTimer);
                 } else {
-                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha - 0.1f, 0.0f, 1.0f);
+                    cnv->quickCanvas->quickCanvasAlpha = std::clamp(cnv->quickCanvas->quickCanvasAlpha - animationSpeed, 0.0f, 1.0f);
 
                     if (approximatelyEqual(0.0f, cnv->quickCanvas->quickCanvasAlpha)) {
                         stopTimer(Timers::QuickCanvasAnimationTimer);
 
-                        cnv->quickCanvas->zoomScale.referTo(Value());
-                        cnv->quickCanvas->locked.referTo(Value());
                         //removeMouseListener(cnv->quickCanvas.get());
                         cnv->quickCanvas.reset();
                     }
