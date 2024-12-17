@@ -220,11 +220,11 @@ void NVGSurface::updateBufferSize()
 
         if (quickCanvasBlurFBO)
             nvgDeleteFramebuffer(quickCanvasBlurFBO);
-        quickCanvasBlurFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
+        quickCanvasBlurFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED | NVG_IMAGE_FLOAT );
 
         if (quickCanvasBlurProcessFBO)
             nvgDeleteFramebuffer(quickCanvasBlurProcessFBO);
-        quickCanvasBlurProcessFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
+        quickCanvasBlurProcessFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED | NVG_IMAGE_FLOAT );
 
         fbWidth = scaledWidth;
         fbHeight = scaledHeight;
@@ -421,7 +421,7 @@ void NVGSurface::render()
                 nvgEndFrame(nvg);
 
                 nvgBindFramebuffer(quickCanvasBlurFBO);
-                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
+                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight, 0, 0, fbWidth, fbHeight);
 
                 if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha)) {
                     nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, quickCanvasBlurProcessFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
@@ -452,9 +452,9 @@ void NVGSurface::render()
     if (needsBufferSwap) {
         nvgBindFramebuffer(nullptr);
         if (doQuickCanvasPass)
-            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, 0, 0, viewWidth, viewHeight);
+            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, 0, 0, viewWidth, viewHeight, 0, 0, viewWidth, viewHeight);
         else
-            nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight);
+            nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight, 0, 0, viewWidth, viewHeight);
 
 #ifdef NANOVG_GL_IMPLEMENTATION
         glContext->swapBuffers();
