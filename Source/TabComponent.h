@@ -34,6 +34,9 @@ public:
     void showTab(Canvas* cnv, int splitIndex = 0);
     void setActiveSplit(Canvas* cnv);
 
+    SmallArray<Canvas*> getSplitCanvases();
+    SmallArray<Canvas*> getSplitCanvasesQuickCanvases();
+
     void updateNow();
         
     void closeAllTabs(

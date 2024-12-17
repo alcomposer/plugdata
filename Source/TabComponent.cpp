@@ -1,3 +1,4 @@
+#include <ranges>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
@@ -567,6 +568,31 @@ Canvas* TabComponent::getCurrentCanvas()
     }
 
     return activeSplitIndex && splits[1] ? splits[1] : splits[0];
+}
+
+SmallArray<Canvas*> TabComponent::getSplitCanvases()
+{
+    SmallArray<Canvas*> splitCanvases;
+    splitCanvases.reserve(2);
+    if (splits[0])
+        splitCanvases.push_back(splits[0]);
+    if (splits[1])
+        splitCanvases.push_back(splits[1]);
+
+    return splitCanvases;
+}
+
+SmallArray<Canvas*> TabComponent::getSplitCanvasesQuickCanvases()
+{
+    SmallArray<Canvas*> splitQuickCanvases;
+    splitQuickCanvases.reserve(2);
+    if (splits[0] && splits[0]->quickCanvas)
+        splitQuickCanvases.push_back(splits[0]->quickCanvas.get());
+    if (splits[1] && splits[1]->quickCanvas)
+        splitQuickCanvases.push_back(splits[1]->quickCanvas.get());
+
+    return splitQuickCanvases;
+
 }
 
 SmallArray<Canvas*> TabComponent::getCanvases()

@@ -410,7 +410,8 @@ void NVGSurface::render()
 #endif
 
         if (doQuickCanvasPass) {
-            if (auto cnv = editor->getCurrentCanvas(); cnv && cnv->isQuickCanvas) {
+            for (auto cnv : editor->getTabComponent().getSplitCanvasesQuickCanvases()) {
+
                 nvgBindFramebuffer(quickCanvasFBO);
                 nvgClear();
                 nvgViewport(0, 0, fbWidth, fbHeight);
@@ -420,15 +421,12 @@ void NVGSurface::render()
                 nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
                 nvgEndFrame(nvg);
 
+                // Blur the current canvas invalidFBO
                 nvgBindFramebuffer(quickCanvasBlurFBO);
                 nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight, 0, 0, fbWidth, fbHeight);
-
-                if (!approximatelyEqual(0.0f, cnv->quickCanvasAlpha)) {
-                    nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, quickCanvasBlurProcessFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
-                }
+                nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, quickCanvasBlurProcessFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
 
                 nvgBindFramebuffer(quickCanvasBlurFBO);
-
                 nvgViewport(0, 0, fbWidth, fbHeight);
                 nvgBeginFrame(nvg, fbWidth, fbHeight, 1);
                 nvgGlobalScissor(nvg, 0, 0, fbWidth, fbHeight);
