@@ -468,18 +468,16 @@ bool PluginEditor::renderArea(NVGcontext* nvg, Rectangle<int> area, bool quickCa
 
     if (isInPluginMode()) {
         pluginMode->render(nvg);
+    } else if (welcomePanel->isVisible()){
+        NVGScopedState scopedState(nvg);
+        welcomePanel->render(nvg);
     } else {
-        if (welcomePanel->isVisible()) {
-            NVGScopedState scopedState(nvg);
-            welcomePanel->render(nvg);
-        } else {
-            ret = tabComponent.renderArea(nvg, area, quickCanvasPass);
+        ret = tabComponent.renderArea(nvg, area, quickCanvasPass);
 
-            if (touchSelectionHelper && touchSelectionHelper->isVisible() && area.intersects(touchSelectionHelper->getBounds() - nvgSurface.getPosition())) {
-                NVGScopedState scopedState(nvg);
-                nvgTranslate(nvg, touchSelectionHelper->getX() - nvgSurface.getX(), touchSelectionHelper->getY() - nvgSurface.getY());
-                touchSelectionHelper->render(nvg);
-            }
+        if (touchSelectionHelper && touchSelectionHelper->isVisible() && area.intersects(touchSelectionHelper->getBounds() - nvgSurface.getPosition())) {
+            NVGScopedState scopedState(nvg);
+            nvgTranslate(nvg, touchSelectionHelper->getX() - nvgSurface.getX(), touchSelectionHelper->getY() - nvgSurface.getY());
+            touchSelectionHelper->render(nvg);
         }
     }
     return ret;
