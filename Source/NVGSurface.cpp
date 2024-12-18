@@ -430,7 +430,7 @@ void NVGSurface::render()
                 editor->renderArea(nvg, invalidArea, true);
                 nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
 
-#define DEBUG_QUICKCANVAS_PAINT
+//#define DEBUG_QUICKCANVAS_PAINT
 #ifdef DEBUG_QUICKCANVAS_PAINT
                 Random random;
                 nvgBeginPath(nvg);
