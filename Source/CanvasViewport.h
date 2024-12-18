@@ -396,12 +396,18 @@ public:
 
                         //removeMouseListener(cnv->quickCanvas.get());
                         cnv->quickCanvas.reset();
+                        editor->getTabComponent().repaint();
                     }
                 }
                 cnv->repaint();
                 if (cnv->quickCanvas) {
                     cnv->quickCanvas->repaint();
                 }
+            } break;
+            case Timers::QuickCanvasBlock: {
+                quickCanvasBlocked = false;
+                stopTimer(Timers::QuickCanvasBlock);
+
             } break;
         }
     }
@@ -491,7 +497,16 @@ public:
                 quickCanvasShowingOrHiding = true;
             }
             if (cnv->quickCanvas && quickCanvasShowingOrHiding) {
-                // TODO: Enter quick canvas, replace the current canvas with the quick canvas completely
+                if (quickCanvasBlocked) {
+                    startTimer(Timers::QuickCanvasBlock, 1000 / 5);
+                    quickCanvasBlocked = true;
+                    quickCanvasTimerCount = 0;
+                    return;
+                }
+                editor->getTabComponent().openPatch(cnv->quickCanvas->patch);
+                cnv->quickCanvas.reset();
+                editor->getTabComponent().repaint();
+                return;
             }
             if (!cnv->quickCanvas && quickCanvasShowingOrHiding) {
                 for (auto obj: cnv->objects) {
@@ -518,6 +533,9 @@ public:
                             cnv->quickCanvas->grabKeyboardFocus();
 
                             cnv->resized();
+                            editor->getTabComponent().repaint();
+                            startTimer(Timers::QuickCanvasBlock, 1000 / 5);
+                            quickCanvasBlocked = true;
                             return;
                         }
                     }
@@ -669,9 +687,10 @@ public:
     std::function<void()> onScroll = []() { };
 
 private:
-    enum Timers { ResizeTimer, AnimationTimer, QuickCanvasTimer, QuickCanvasAnimationTimer };
+    enum Timers { ResizeTimer, AnimationTimer, QuickCanvasTimer, QuickCanvasAnimationTimer, QuickCanvasBlock };
     int quickCanvasTimerCount = 0;
     bool quickCanvasShowingOrHiding = false;
+    bool quickCanvasBlocked = false;
 
     Point<int> startPos;
     Point<int> targetPos;

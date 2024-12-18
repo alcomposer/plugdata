@@ -167,10 +167,13 @@ private:
             g.setGradientFill(ColourGradient(textColour, fadeX - 18, area.getY(), Colours::transparentBlack, fadeX, area.getY(), false));
 
             if (cnv) {
+                auto quickCanvasText = cnv->quickCanvas ? cnv->quickCanvas->patch.getTitle() + (cnv->quickCanvas->patch.isDirty() ? String("*") : String()) : String();
                 auto text = cnv->patch.getTitle() + (cnv->patch.isDirty() ? String("*") : String());
 
+                auto formatedText = text + (quickCanvasText.isNotEmpty() ? String("  >  ") + quickCanvasText : "");
+
                 g.setFont(Fonts::getCurrentFont().withHeight(14.0f));
-                g.drawText(text, area.reduced(4, 0), Justification::centred, false);
+                g.drawText(formatedText, area.reduced(4, 0), Justification::centred, false);
             }
         }
 
