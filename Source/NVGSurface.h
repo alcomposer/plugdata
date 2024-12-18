@@ -123,6 +123,7 @@ private:
 
     Rectangle<int> invalidArea;
     NVGframebuffer* invalidFBO = nullptr;
+    NVGframebuffer* invalidFBO_Split1 = nullptr;
 
     NVGframebuffer* quickCanvasFBO = nullptr;
     NVGframebuffer* quickCanvasBlurFBO = nullptr;
