@@ -174,10 +174,6 @@ void NVGSurface::detachContext()
             nvgDeleteFramebuffer(invalidFBO);
             invalidFBO = nullptr;
         }
-        if (invalidFBO_Split1) {
-            nvgDeleteFramebuffer(invalidFBO_Split1);
-            invalidFBO_Split1 = nullptr;
-        }
         if (quickCanvasFBO) {
             nvgDeleteFramebuffer(quickCanvasFBO);
             quickCanvasFBO = nullptr;
@@ -185,10 +181,6 @@ void NVGSurface::detachContext()
         if (quickCanvasBlurFBO) {
             nvgDeleteFramebuffer(quickCanvasBlurFBO);
             quickCanvasBlurFBO = nullptr;
-        }
-        if (quickCanvasBlurProcessFBO) {
-            nvgDeleteFramebuffer(quickCanvasBlurProcessFBO);
-            quickCanvasBlurProcessFBO = nullptr;
         }
         if (nvg) {
             nvgDeleteContext(nvg);
@@ -218,21 +210,13 @@ void NVGSurface::updateBufferSize()
             nvgDeleteFramebuffer(invalidFBO);
         invalidFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
 
-        if (invalidFBO_Split1)
-            nvgDeleteFramebuffer(invalidFBO_Split1);
-        invalidFBO_Split1 = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
-
         if (quickCanvasFBO)
             nvgDeleteFramebuffer(quickCanvasFBO);
         quickCanvasFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
 
         if (quickCanvasBlurFBO)
             nvgDeleteFramebuffer(quickCanvasBlurFBO);
-        quickCanvasBlurFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED | NVG_IMAGE_FLOAT );
-
-        if (quickCanvasBlurProcessFBO)
-            nvgDeleteFramebuffer(quickCanvasBlurProcessFBO);
-        quickCanvasBlurProcessFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED | NVG_IMAGE_FLOAT );
+        quickCanvasBlurFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED | NVG_IMAGE_FLOAT | NVG_DOUBLE_COLOUR_ATTACH);
 
         fbWidth = scaledWidth;
         fbHeight = scaledHeight;
@@ -441,8 +425,8 @@ void NVGSurface::render()
 
                 // Blur the current canvas invalidFBO
                 nvgBindFramebuffer(quickCanvasBlurFBO);
-                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight, 0, 0, fbWidth, fbHeight);
-                nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, quickCanvasBlurProcessFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
+                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight, 0, 0, viewWidth, viewHeight);
+                nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
 
                 nvgBindFramebuffer(quickCanvasBlurFBO);
                 nvgViewport(0, 0, fbWidth, fbHeight);
