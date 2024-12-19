@@ -525,6 +525,7 @@ void TabComponent::showTab(Canvas* cnv, int splitIndex)
     if (cnv && cnv != getCurrentCanvas()) {
         cnv->deselectAll();
         editor->sidebar->updateSearch(true);
+        editor->updateSelection(cnv);
     }
 
     if (splits[splitIndex] && splits[splitIndex] != splits[!splitIndex]) {

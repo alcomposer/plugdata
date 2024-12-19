@@ -397,6 +397,7 @@ public:
                         //removeMouseListener(cnv->quickCanvas.get());
                         cnv->quickCanvas.reset();
                         editor->getTabComponent().repaint();
+                        editor->updateSelection(cnv);
                     }
                 }
                 cnv->repaint();
@@ -536,6 +537,7 @@ public:
                             editor->getTabComponent().repaint();
                             startTimer(Timers::QuickCanvasBlock, 1000 / 5);
                             quickCanvasBlocked = true;
+                            editor->updateSelection(cnv->quickCanvas.get());
                             return;
                         }
                     }
