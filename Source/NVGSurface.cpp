@@ -202,8 +202,8 @@ void NVGSurface::detachContext()
 void NVGSurface::updateBufferSize()
 {
     float pixelScale = getRenderScale();
-    int scaledWidth = getWidth() * pixelScale;
-    int scaledHeight = getHeight() * pixelScale;
+    int scaledWidth = getWidth() * pixelScale + doubleCnvMargin;
+    int scaledHeight = getHeight() * pixelScale + doubleCnvMargin;
 
     if (fbWidth != scaledWidth || fbHeight != scaledHeight || !invalidFBO) {
         if (invalidFBO)
@@ -216,11 +216,12 @@ void NVGSurface::updateBufferSize()
 
         if (quickCanvasBlurFBO)
             nvgDeleteFramebuffer(quickCanvasBlurFBO);
+        // The blur frame buffer is Float16 RGB (no alpha) with two colour attachments for multi-pass optimized blurring
         quickCanvasBlurFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED | NVG_IMAGE_FLOAT | NVG_DOUBLE_COLOUR_ATTACH);
 
         fbWidth = scaledWidth;
         fbHeight = scaledHeight;
-        invalidArea = getLocalBounds();
+        invalidArea = getLocalBounds().expanded(32);
     }
 }
 
@@ -308,12 +309,12 @@ void NVGSurface::resized()
 
 void NVGSurface::invalidateAll()
 {
-    invalidArea = invalidArea.getUnion(getLocalBounds());
+    invalidArea = invalidArea.getUnion(getLocalBounds().expanded(cnvMargin).translated(cnvMargin, cnvMargin));
 }
 
 void NVGSurface::invalidateArea(Rectangle<int> area)
 {
-    invalidArea = invalidArea.getUnion(area);
+    invalidArea = invalidArea.getUnion(area.translated(cnvMargin, cnvMargin));
 }
 
 void NVGSurface::render()
@@ -368,15 +369,15 @@ void NVGSurface::render()
 
     updateBufferSize();
 
-    invalidArea = invalidArea.getIntersection(getLocalBounds());
+    invalidArea = invalidArea.getIntersection(getLocalBounds().translated(cnvMargin, cnvMargin).expanded(cnvMargin));
 
     if (auto* cnv = editor->getPluginModeCanvas()) {
-        cnv->updateFramebuffers(nvg, cnv->getLocalBounds());
+        cnv->updateFramebuffers(nvg, cnv->getLocalBounds().expanded(cnvMargin));
     } else {
         for (auto* cnv : editor->getTabComponent().getVisibleCanvases()) {
-            cnv->updateFramebuffers(nvg, cnv->getLocalBounds());
+            cnv->updateFramebuffers(nvg, cnv->getLocalBounds().expanded(cnvMargin));
             if (cnv->quickCanvas) {
-                cnv->quickCanvas->updateFramebuffers(nvg, cnv->getLocalBounds());
+                cnv->quickCanvas->updateFramebuffers(nvg, cnv->getLocalBounds().expanded(cnvMargin));
             }
         }
     }
@@ -386,22 +387,45 @@ void NVGSurface::render()
     if (!invalidArea.isEmpty()) {
         // Draw only the invalidated region on top of framebuffer
         nvgBindFramebuffer(invalidFBO);
-        nvgViewport(0, 0, viewWidth, viewHeight);
+        nvgViewport(0, 0, viewWidth + doubleCnvMargin, viewHeight + doubleCnvMargin);
 #if NANOVG_GL_IMPLEMENTATION
         glClear(GL_STENCIL_BUFFER_BIT);
 #endif
-        nvgBeginFrame(nvg, getWidth() * desktopScale, getHeight() * desktopScale, devicePixelScale);
+        nvgBeginFrame(nvg, getWidth() * desktopScale + doubleCnvMargin, getHeight() * desktopScale + doubleCnvMargin, devicePixelScale);
+        nvgTranslate(nvg, cnvMargin, cnvMargin);
         nvgScale(nvg, desktopScale, desktopScale);
         doQuickCanvasPass = editor->renderArea(nvg, invalidArea);
+
+//#define DEBUG_QUICKCANVAS_PAINT
+#ifdef DEBUG_QUICKCANVAS_PAINT
+        nvgTranslate(nvg, -cnvMargin, -cnvMargin);
+        Random random;
+        nvgBeginPath(nvg);
+        nvgFillColor(nvg, nvgRGBA(random.nextInt(256), random.nextInt(256), random.nextInt(256), 100));
+        nvgFillRect(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
+#endif
         nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
+
         nvgEndFrame(nvg);
 
 #if ENABLE_FPS_COUNT
         frameTimer->render(nvg, getWidth(), getHeight(), pixelScale);
 #endif
 
-        if (doQuickCanvasPass && !invalidArea.isEmpty()) {
+        if (doQuickCanvasPass) {
             for (auto cnv : editor->getTabComponent().getSplitCanvasesQuickCanvases()) {
+                auto sX = cnv->getActiveViewport()->getX();
+                auto sY = cnv->getActiveViewport()->getY() - 30; // height of tabbar
+                auto sW = cnv->getActiveViewport()->getWidth();
+                auto sH = cnv->getActiveViewport()->getHeight();
+                // Blur the current canvas invalidFBO
+                nvgBindFramebuffer(quickCanvasBlurFBO);
+                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight, 0, 0, fbWidth, fbHeight);
+
+                //glScissor(sX, sY, sW, sH);
+                glDisable(GL_SCISSOR_TEST);
+                nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, 0, 0, fbWidth, fbHeight, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
+                glEnable(GL_SCISSOR_TEST);
 
                 nvgBindFramebuffer(quickCanvasFBO);
 
@@ -409,24 +433,13 @@ void NVGSurface::render()
                 glClearColor(0, 0, 0, 0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-                nvgBeginFrame(nvg, getWidth() * desktopScale, getHeight() * desktopScale, devicePixelScale);
+                nvgBeginFrame(nvg, getWidth() * desktopScale + doubleCnvMargin, getHeight() * desktopScale + doubleCnvMargin, devicePixelScale);
+                nvgTranslate(nvg, cnvMargin, cnvMargin);
                 nvgScale(nvg, desktopScale, desktopScale);
                 editor->renderArea(nvg, invalidArea, true);
                 nvgGlobalScissor(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
 
-//#define DEBUG_QUICKCANVAS_PAINT
-#ifdef DEBUG_QUICKCANVAS_PAINT
-                Random random;
-                nvgBeginPath(nvg);
-                nvgFillColor(nvg, nvgRGBA(random.nextInt(256), random.nextInt(256), random.nextInt(256), 100));
-                nvgFillRect(nvg, invalidArea.getX() * pixelScale, invalidArea.getY() * pixelScale, invalidArea.getWidth() * pixelScale, invalidArea.getHeight() * pixelScale);
-#endif
                 nvgEndFrame(nvg);
-
-                // Blur the current canvas invalidFBO
-                nvgBindFramebuffer(quickCanvasBlurFBO);
-                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight, 0, 0, viewWidth, viewHeight);
-                nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
 
                 nvgBindFramebuffer(quickCanvasBlurFBO);
                 nvgViewport(0, 0, fbWidth, fbHeight);
@@ -451,10 +464,13 @@ void NVGSurface::render()
 
     if (needsBufferSwap) {
         nvgBindFramebuffer(nullptr);
+        glDisable(GL_SCISSOR_TEST);
         if (doQuickCanvasPass)
-            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, 0, 0, viewWidth, viewHeight, 0, 0, viewWidth, viewHeight);
+            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, cnvMargin, -cnvMargin, viewWidth, viewHeight + doubleCnvMargin, 0, 0, viewWidth, viewHeight + doubleCnvMargin);
         else
-            nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, viewWidth, viewHeight, 0, 0, viewWidth, viewHeight);
+            nvgBlitFramebuffer(nvg, invalidFBO, cnvMargin, -cnvMargin, viewWidth, viewHeight + doubleCnvMargin, 0, 0, viewWidth, viewHeight + doubleCnvMargin);
+
+        glEnable(GL_SCISSOR_TEST);
 
 #ifdef NANOVG_GL_IMPLEMENTATION
         glContext->swapBuffers();

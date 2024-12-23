@@ -609,9 +609,12 @@ bool TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area, bool renderQ
 {
     bool isQuickCanvasShowing = false;
 
+    auto cnvMargin = NVGSurface::cnvMargin;
+    auto cnvDoubleMargin = NVGSurface::doubleCnvMargin;
+
     if (splits[0]) {
         NVGScopedState scopedState(nvg);
-        nvgScissor(nvg, 0, 0, splits[1] ? (splitSize - 3) : getWidth(), getHeight());
+        nvgScissor(nvg, -cnvMargin, -cnvMargin, splits[1] ? (splitSize - 3) : getWidth() + cnvDoubleMargin, getHeight() + cnvDoubleMargin);
         if (renderQuickCanvas && splits[0]->quickCanvas)
             splits[0]->quickCanvas->performRender(nvg, area);
         else

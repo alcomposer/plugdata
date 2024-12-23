@@ -992,11 +992,6 @@ public:
         Graphics g(*nvgContext);
         g.reduceClipRegion(editor->nvgSurface.getInvalidArea());
         paintEntireComponent(g, false);
-
-        auto gradient = nvgLinearGradient(nvg, 0, viewport.getY(), 0, viewport.getY() + 20, convertColour(findColour(PlugDataColour::panelBackgroundColourId)), nvgRGBA(255, 255, 255, 0));
-
-        nvgFillPaint(nvg, gradient);
-        nvgFillRect(nvg, viewport.getX() + 8, viewport.getY(), viewport.getWidth() - 16, 20);
     }
 
     void lookAndFeelChanged() override

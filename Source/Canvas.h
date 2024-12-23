@@ -92,6 +92,8 @@ public:
     void middleMouseChanged(bool isHeld) override;
     void altKeyChanged(bool isHeld) override;
 
+    Viewport* getActiveViewport();
+
     void settingsChanged(String const& name, var const& value) override;
 
     void focusGained(FocusChangeType cause) override;

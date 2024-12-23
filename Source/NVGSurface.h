@@ -51,7 +51,7 @@ public:
 
     void lookAndFeelChanged() override;
 
-    Rectangle<int> getInvalidArea() { return invalidArea; }
+    Rectangle<int> getInvalidArea() { return invalidArea.translated(-cnvMargin, -cnvMargin); }
 
     float getRenderScale() const;
 
@@ -107,6 +107,9 @@ public:
     static NVGSurface* getSurfaceForContext(NVGcontext*);
 
     void renderFrameToImage(Image& image, Rectangle<int> area);
+
+    inline static int cnvMargin = 32;
+    inline static int doubleCnvMargin = cnvMargin * 2;
 
 private:
     float calculateRenderScale() const;

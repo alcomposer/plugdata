@@ -607,6 +607,7 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
     auto const halfSize = infiniteCanvasSize / 2;
     auto const zoom = getValue<float>(zoomScale);
     bool isLocked = getValue<bool>(locked);
+    auto cnvMargin = NVGSurface::cnvMargin;
     nvgSave(nvg);
 
     if (auto parentCnv = findParentComponentOfClass<Canvas>(); parentCnv && parentCnv->viewport && isQuickCanvas) {
@@ -615,19 +616,19 @@ void Canvas::performRender(NVGcontext* nvg, Rectangle<int> invalidRegion) {
             auto offset = quickCanvasOffset * zoom;
             nvgTranslate(nvg, -viewPos.x - offset.x, -viewPos.y - offset.y);
             nvgScale(nvg, zoom, zoom);
-            invalidRegion = invalidRegion.translated(viewPos.x + offset.x, viewPos.y + offset.y);
+            invalidRegion = invalidRegion.translated(viewPos.x + offset.x - cnvMargin, viewPos.y + offset.y - cnvMargin);
             invalidRegion /= zoom;
         }
     } else if (viewport) {
         nvgTranslate(nvg, -viewport->getViewPositionX(), -viewport->getViewPositionY());
         nvgScale(nvg, zoom, zoom);
-        invalidRegion = invalidRegion.translated(viewport->getViewPositionX(), viewport->getViewPositionY());
+        invalidRegion = invalidRegion.translated(viewport->getViewPositionX() - cnvMargin, viewport->getViewPositionY() - cnvMargin);
         invalidRegion /= zoom;
     }
     if (isQuickCanvas || viewport) {
         if (!isQuickCanvas) {
             nvgFillColor(nvg, canvasBackgroundCol);
-            nvgFillRect(nvg, invalidRegion.getX(), invalidRegion.getY(), invalidRegion.getWidth(), invalidRegion.getHeight());
+            nvgFillRect(nvg, 0, 0, infiniteCanvasSize, infiniteCanvasSize); // fill the whole thing (which will get cropped to visible anyway)
         }
         if (!isLocked) {
             nvgBeginPath(nvg);
@@ -1483,7 +1484,7 @@ void Canvas::mouseDrag(MouseEvent const& e)
         return;
     }
 
-    auto usedViewport = isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
+    auto usedViewport = getActiveViewport();
 
     auto viewportEvent = e.getEventRelativeTo(usedViewport);
     if (usedViewport && !ObjectBase::isBeingEdited() && autoscroll(viewportEvent)) {
@@ -1497,9 +1498,14 @@ void Canvas::mouseDrag(MouseEvent const& e)
     }
 }
 
+Viewport* Canvas::getActiveViewport()
+{
+    return isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
+}
+
 bool Canvas::autoscroll(MouseEvent const& e)
 {
-    auto usedViewport = isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
+    auto usedViewport = getActiveViewport();
 
     if (!usedViewport)
         return false;
@@ -1944,7 +1950,7 @@ void Canvas::duplicateSelection()
     // Adjust the viewport position to ensure the duplicated objects are visible
 
     // Use the base canvas viewport (quick canvas uses base canvas viewport)
-    auto usedViewport = isQuickCanvas ? findParentComponentOfClass<Canvas>()->viewport.get() : viewport.get();
+    auto usedViewport = getActiveViewport();
 
     auto viewportPos = usedViewport->getViewPosition();
 
