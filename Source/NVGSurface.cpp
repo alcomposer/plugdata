@@ -421,7 +421,7 @@ void NVGSurface::render()
                 auto sH = cnv->getActiveViewport()->getHeight();
                 // Blur the current canvas invalidFBO
                 nvgBindFramebuffer(quickCanvasBlurFBO);
-                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight, 0, 0, fbWidth, fbHeight);
+                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
 
                 //glScissor(sX, sY, sW, sH);
                 glDisable(GL_SCISSOR_TEST);
@@ -467,9 +467,9 @@ void NVGSurface::render()
         nvgBindFramebuffer(nullptr);
         glDisable(GL_SCISSOR_TEST);
         if (doQuickCanvasPass)
-            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, cnvMargin, -cnvMargin, viewWidth, viewHeight + doubleCnvMargin, 0, 0, viewWidth, viewHeight + doubleCnvMargin);
+            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, cnvMargin, cnvMargin, viewWidth, viewHeight);
         else
-            nvgBlitFramebuffer(nvg, invalidFBO, cnvMargin, -cnvMargin, viewWidth, viewHeight + doubleCnvMargin, 0, 0, viewWidth, viewHeight + doubleCnvMargin);
+            nvgBlitFramebuffer(nvg, invalidFBO, cnvMargin, cnvMargin, viewWidth, viewHeight);
 
         glEnable(GL_SCISSOR_TEST);
 
