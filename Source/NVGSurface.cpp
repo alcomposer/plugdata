@@ -202,10 +202,10 @@ void NVGSurface::detachContext()
 void NVGSurface::updateBufferSize()
 {
     float pixelScale = getRenderScale();
-    int scaledWidth = getWidth() * pixelScale + doubleCnvMargin;
-    int scaledHeight = getHeight() * pixelScale + doubleCnvMargin;
+    int scaledWidth = (getWidth() + doubleCnvMargin) * pixelScale;
+    int scaledHeight = (getHeight() + doubleCnvMargin) * pixelScale;
 
-    if (fbWidth != scaledWidth || fbHeight != scaledHeight || !invalidFBO) {
+    if (fbWidth != scaledWidth || fbHeight != scaledHeight || !invalidFBO || !quickCanvasFBO || !quickCanvasBlurFBO) {
         if (invalidFBO)
             nvgDeleteFramebuffer(invalidFBO);
         invalidFBO = nvgCreateFramebuffer(nvg, scaledWidth, scaledHeight, NVG_IMAGE_PREMULTIPLIED);
