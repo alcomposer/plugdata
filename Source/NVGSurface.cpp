@@ -221,7 +221,8 @@ void NVGSurface::updateBufferSize()
 
         fbWidth = scaledWidth;
         fbHeight = scaledHeight;
-        invalidArea = getLocalBounds().expanded(32);
+
+        invalidateAll();
     }
 }
 
