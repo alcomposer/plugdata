@@ -488,6 +488,13 @@ public:
             if (quickCanvasTimerCount < 2)
                 return;
 
+            if (quickCanvasBlocked) {
+                startTimer(Timers::QuickCanvasBlock, 1000 / 5);
+                quickCanvasBlocked = true;
+                quickCanvasTimerCount = 0;
+                return;
+            }
+
             startTimer(Timers::QuickCanvasAnimationTimer, 1000 / 60);
 
             if (wheel.deltaY < 0.0f) {
@@ -498,12 +505,6 @@ public:
                 quickCanvasShowingOrHiding = true;
             }
             if (cnv->quickCanvas && quickCanvasShowingOrHiding) {
-                if (quickCanvasBlocked) {
-                    startTimer(Timers::QuickCanvasBlock, 1000 / 5);
-                    quickCanvasBlocked = true;
-                    quickCanvasTimerCount = 0;
-                    return;
-                }
                 editor->getTabComponent().openPatch(cnv->quickCanvas->patch);
                 cnv->quickCanvas.reset();
                 editor->getTabComponent().repaint();
@@ -515,6 +516,8 @@ public:
                         if (auto patch = obj->gui->getPatch()) {
                             
                             quickCanvasTimerCount = 0;
+                            startTimer(Timers::QuickCanvasBlock, 1000 / 5);
+                            quickCanvasBlocked = true;
 
                             cnv->quickCanvas = std::make_unique<Canvas>(editor, patch, nullptr, true);
                             cnv->addAndMakeVisible(cnv->quickCanvas.get());
@@ -535,8 +538,6 @@ public:
 
                             cnv->resized();
                             editor->getTabComponent().repaint();
-                            startTimer(Timers::QuickCanvasBlock, 1000 / 5);
-                            quickCanvasBlocked = true;
                             editor->updateSelection(cnv->quickCanvas.get());
                             return;
                         }

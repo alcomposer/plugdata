@@ -184,6 +184,8 @@ public:
     // Return the canvas currently in plugin mode, otherwise return nullptr
     Canvas* getPluginModeCanvas();
 
+    Colour backgroundColour;
+
 private:
     TabComponent tabComponent;
 

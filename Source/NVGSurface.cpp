@@ -4,6 +4,7 @@
  // WARRANTIES, see the file, "LICENSE.txt," in this distribution.
  */
 
+#include <ranges>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_opengl/juce_opengl.h>
 using namespace juce::gl;
@@ -202,7 +203,10 @@ void NVGSurface::detachContext()
 void NVGSurface::updateBufferSize()
 {
     float pixelScale = getRenderScale();
-    int scaledWidth = (getWidth() + doubleCnvMargin) * pixelScale;
+    // Add margin around each split for blurring
+    auto margin = editor->getTabComponent().isSplit() ? doubleCnvMargin * 2: doubleCnvMargin;
+    // Width is only effected as we only split horizontally ATM
+    int scaledWidth = (getWidth() + margin) * pixelScale;
     int scaledHeight = (getHeight() + doubleCnvMargin) * pixelScale;
 
     if (fbWidth != scaledWidth || fbHeight != scaledHeight || !invalidFBO || !quickCanvasFBO || !quickCanvasBlurFBO) {
@@ -414,23 +418,33 @@ void NVGSurface::render()
 #endif
 
         if (doQuickCanvasPass) {
+            int split = 0;
             for (auto cnv : editor->getTabComponent().getSplitCanvasesQuickCanvases()) {
-                auto sX = cnv->getActiveViewport()->getX();
-                auto sY = cnv->getActiveViewport()->getY() - 30; // height of tabbar
-                auto sW = cnv->getActiveViewport()->getWidth();
-                auto sH = cnv->getActiveViewport()->getHeight();
+                auto margin = split == 1 ? doubleCnvMargin - 24 : cnvMargin;
+                auto vpBounds = cnv->getActiveViewport()->getBounds().expanded(cnvMargin).translated(margin, cnvMargin - 30); // 31 is height of tab bar
+                split++;
+                auto sX = vpBounds.getX();
+                auto sY = fbHeight - (vpBounds.getY() + vpBounds.getHeight());
+                auto sW = vpBounds.getWidth();
+                auto sH = vpBounds.getHeight();
                 // Blur the current canvas invalidFBO
+                glScissor(sX, sY, sW, sH);
                 nvgBindFramebuffer(quickCanvasBlurFBO);
-                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, fbWidth, fbHeight);
+                nvgBlitFramebuffer(nvg, invalidFBO, 0, 0, 0, 0, fbWidth, fbHeight);
 
                 //glScissor(sX, sY, sW, sH);
-                glDisable(GL_SCISSOR_TEST);
+                //glDisable(GL_SCISSOR_TEST);
                 nvgBlurFramebuffer(nvg, quickCanvasBlurFBO, 0, 0, fbWidth, fbHeight, fbWidth, fbHeight, cnv->quickCanvasAlpha * getValue<float>(cnv->zoomScale));
-                glEnable(GL_SCISSOR_TEST);
+                //glEnable(GL_SCISSOR_TEST);
 
                 nvgBindFramebuffer(quickCanvasFBO);
-
-                // Clear only the invalid region
+                invalidArea.intersectRectangle(vpBounds);
+                sX = vpBounds.getX();
+                sY = fbHeight - (vpBounds.getY() + vpBounds.getHeight());
+                sW = vpBounds.getWidth();
+                sH = vpBounds.getHeight();
+                // Clear only the invalid region inside this split
+                glScissor(sX, sY, sW, sH);
                 glClearColor(0, 0, 0, 0);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
@@ -466,11 +480,56 @@ void NVGSurface::render()
     if (needsBufferSwap) {
         nvgBindFramebuffer(nullptr);
         glDisable(GL_SCISSOR_TEST);
-        if (doQuickCanvasPass)
-            nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, cnvMargin, cnvMargin, viewWidth, viewHeight);
-        else
-            nvgBlitFramebuffer(nvg, invalidFBO, cnvMargin, cnvMargin, viewWidth, viewHeight);
 
+        auto bgCol = editor->backgroundColour;
+        glClearColor(bgCol.getFloatRed(), bgCol.getFloatGreen(), bgCol.getFloatBlue(), bgCol.getFloatAlpha());
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+        auto renderingViewports = false;
+
+        int split = 0;
+        for (auto cnv : editor->getTabComponent().getSplitCanvases()) {
+            renderingViewports = true;
+            auto vpBounds = cnv->getActiveViewport()->getBounds().translated(0, -30); // 31 size of tab bar
+            auto sX = vpBounds.getX();
+            auto sY = vpBounds.getY();
+            auto sW = vpBounds.getWidth();
+            auto sH = vpBounds.getHeight();
+            auto margin = split == 1 ? doubleCnvMargin : cnvMargin;
+            if (doQuickCanvasPass)
+                nvgBlitFramebuffer(nvg, quickCanvasBlurFBO, sX + margin, sY + cnvMargin, sX, sY, sW, sH);
+            else
+                nvgBlitFramebuffer(nvg, invalidFBO, sX + margin, sY + cnvMargin, sX, sY, sW, sH);
+
+            split++;
+        }
+
+//#define DEBUG_ACTIVE_SPLIT
+#ifdef DEBUG_ACTIVE_SPLIT
+        for (auto cnv : editor->getTabComponent().getSplitCanvases()) {
+            if (cnv == editor->getCurrentCanvas()) {
+
+                auto vpBounds = cnv->getActiveViewport()->getBounds().translated(0, -31); // 31 size of tab bar
+                auto sX = vpBounds.getX();
+                auto sY = vpBounds.getY();
+                auto sW = vpBounds.getWidth();
+                auto sH = vpBounds.getHeight();
+
+                nvgViewport(0, 0, getWidth(), getHeight());
+                nvgBeginFrame(nvg, getWidth(), getHeight(), 1);
+                nvgGlobalScissor(nvg, 0, 0, getWidth(), getHeight());
+                nvgBeginPath(nvg);
+                nvgStrokeColor(nvg, nvgRGBA(255, 0, 0, 100));
+                nvgStrokeWidth(nvg, 3);
+                nvgStrokeRect(nvg, sX, sY, sW, sH);
+                nvgEndFrame(nvg);
+            }
+        }
+#endif
+
+        if (!renderingViewports) {
+            nvgBlitFramebuffer(nvg, invalidFBO, cnvMargin, cnvMargin, 0, 0, viewWidth, viewHeight);
+        }
         glEnable(GL_SCISSOR_TEST);
 
 #ifdef NANOVG_GL_IMPLEMENTATION

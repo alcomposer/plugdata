@@ -44,6 +44,11 @@ TabComponent::~TabComponent()
     clearCanvases();
 }
 
+bool TabComponent::isSplit()
+{
+    return (static_cast<bool>(splits[0]) + static_cast<bool>(splits[1])) > 1;
+}
+
 Canvas* TabComponent::newPatch()
 {
     return openPatch(pd::Instance::defaultPatch);
@@ -614,7 +619,7 @@ bool TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area, bool renderQ
 
     if (splits[0]) {
         NVGScopedState scopedState(nvg);
-        nvgScissor(nvg, -cnvMargin, -cnvMargin, splits[1] ? (splitSize - 3) : getWidth() + cnvDoubleMargin, getHeight() + cnvDoubleMargin);
+        nvgScissor(nvg, -cnvMargin, -cnvMargin, splits[1] ? (splitSize + cnvMargin) : getWidth() + cnvDoubleMargin, getHeight() + cnvDoubleMargin);
         if (renderQuickCanvas && splits[0]->quickCanvas)
             splits[0]->quickCanvas->performRender(nvg, area);
         else
@@ -624,13 +629,13 @@ bool TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area, bool renderQ
     }
     if (splits[1]) {
         NVGScopedState scopedState(nvg);
-        nvgTranslate(nvg, splitSize + 3, 0);
-        nvgScissor(nvg, 0, 0, getWidth() - (splitSize + 3), getHeight());
+        nvgTranslate(nvg, splitSize + (cnvDoubleMargin), 0);
+        nvgScissor(nvg, -cnvMargin, -cnvMargin, getWidth() - splitSize + cnvDoubleMargin, getHeight() + cnvDoubleMargin);
 
         if (renderQuickCanvas && splits[1]->quickCanvas)
-            splits[1]->quickCanvas->performRender(nvg, area.translated(-(splitSize + 3), 0));
+            splits[1]->quickCanvas->performRender(nvg, area.translated(-(splitSize + cnvMargin), 0));
         else
-            splits[1]->performRender(nvg, area.translated(-(splitSize + 3), 0));
+            splits[1]->performRender(nvg, area.translated(-(splitSize + cnvMargin), 0));
 
         isQuickCanvasShowing |= static_cast<bool>(splits[1]->quickCanvas.get());
     }
@@ -645,8 +650,8 @@ bool TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area, bool renderQ
 
     if (splits[1]) {
         // Draw gab between splits
-        nvgFillColor(nvg, NVGComponent::convertColour(findColour(PlugDataColour::canvasBackgroundColourId)));
-        nvgFillRect(nvg, splitSize - 3, 0, 6, getHeight());
+        //nvgFillColor(nvg, NVGComponent::convertColour(findColour(PlugDataColour::canvasBackgroundColourId)));
+        //nvgFillRect(nvg, splitSize - 3, 0, 6, getHeight());
 
         // Draw highlight around active split
         auto activeSplitBounds = activeSplitIndex ? Rectangle<int>(splitSize, 0, getWidth() - splitSize, getHeight() - 31) : Rectangle<int>(0, 0, splitSize, getHeight() - 31);
@@ -662,7 +667,7 @@ bool TabComponent::renderArea(NVGcontext* nvg, Rectangle<int> area, bool renderQ
 void TabComponent::mouseDown(MouseEvent const& e)
 {
     auto localPos = e.getEventRelativeTo(this).getPosition();
-    if (localPos.x > splitSize - 3 && localPos.x < splitSize + 3) {
+    if (localPos.x > splitSize && localPos.x < splitSize) {
         draggingSplitResizer = true;
         setMouseCursor(MouseCursor::LeftRightResizeCursor);
     } else if (splits[1] && localPos.x > splitSize) {
@@ -691,7 +696,7 @@ void TabComponent::mouseDrag(MouseEvent const& e)
 void TabComponent::mouseMove(MouseEvent const& e)
 {
     auto localPos = e.getEventRelativeTo(this).getPosition();
-    if (localPos.x > splitSize - 3 && localPos.x < splitSize + 3) {
+    if (localPos.x > splitSize && localPos.x < splitSize) {
         setMouseCursor(MouseCursor::LeftRightResizeCursor);
     }
 }

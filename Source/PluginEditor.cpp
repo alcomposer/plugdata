@@ -1765,6 +1765,8 @@ void PluginEditor::broughtToFront()
 void PluginEditor::lookAndFeelChanged()
 {
     ObjectThemeManager::get()->updateTheme();
+
+    backgroundColour = findColour(PlugDataColour::canvasBackgroundColourId);
 }
 
 void PluginEditor::commandKeyChanged(bool isHeld)

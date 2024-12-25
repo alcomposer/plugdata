@@ -108,7 +108,7 @@ public:
 
     void renderFrameToImage(Image& image, Rectangle<int> area);
 
-    inline static int cnvMargin = 32;
+    inline static int cnvMargin = 24;
     inline static int doubleCnvMargin = cnvMargin * 2;
 
 private:
